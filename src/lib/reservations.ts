@@ -156,7 +156,7 @@ export async function startPayment(
   provider: 'stripe' | 'feexpay',
   returnUrl: string,
   extra?: Record<string, string>,
-): Promise<{ url?: string; reference?: string; error?: string }> {
+): Promise<{ url?: string; reference?: string; mode?: 'redirect' | 'push'; amount_xof?: number; error?: string }> {
   const { data, error } = await supabase.functions.invoke('payments-create', {
     body: { reservation_id: reservationId, provider, return_url: returnUrl, ...extra },
   });
@@ -170,8 +170,25 @@ export async function startPayment(
     }
     return { error: reservationError(msg) };
   }
-  return data as { url?: string; reference?: string };
+  return data as { url?: string; reference?: string; mode?: 'redirect' | 'push'; amount_xof?: number };
 }
+
+/** Asks the server to check the payment with Stripe/FeexPay (and confirm it if paid). */
+export async function checkPayment(reservationId: string): Promise<'paid' | 'pending' | 'failed' | 'none' | 'error'> {
+  const { data, error } = await supabase.functions.invoke('payments-check', { body: { reservation_id: reservationId } });
+  if (error) return 'error';
+  return ((data as { status?: string })?.status as 'paid' | 'pending' | 'failed' | 'none') ?? 'error';
+}
+
+/** Mobile-money networks offered with FeexPay (slug → label), grouped by country with dialing code. */
+export const MOBILE_MONEY: { country: string; flag: string; code: string; networks: [string, string][] }[] = [
+  { country: 'Sénégal', flag: '🇸🇳', code: '221', networks: [['wave_sn', 'Wave'], ['orange_sn', 'Orange Money'], ['free_sn', 'Free Money']] },
+  { country: 'Côte d’Ivoire', flag: '🇨🇮', code: '225', networks: [['wave_ci', 'Wave'], ['orange_ci', 'Orange Money'], ['mtn_ci', 'MTN'], ['moov_ci', 'Moov']] },
+  { country: 'Bénin', flag: '🇧🇯', code: '229', networks: [['mtn', 'MTN'], ['moov', 'Moov'], ['celtiis_bj', 'Celtiis']] },
+  { country: 'Togo', flag: '🇹🇬', code: '228', networks: [['moov_tg', 'Moov'], ['togocom_tg', 'Togocom']] },
+  { country: 'Burkina Faso', flag: '🇧🇫', code: '226', networks: [['wave_bf', 'Wave'], ['moov_bf', 'Moov']] },
+  { country: 'Congo', flag: '🇨🇬', code: '242', networks: [['mtn_cg', 'MTN']] },
+];
 
 /* ---------- Hooks ---------- */
 

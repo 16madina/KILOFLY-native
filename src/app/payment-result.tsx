@@ -7,14 +7,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AccentTitle, art, Button, Logo, T } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
-import { fetchReservation } from '@/lib/reservations';
+import { checkPayment } from '@/lib/reservations';
 import { colors } from '@/theme';
 
-type State = 'checking' | 'paid' | 'pending' | 'cancelled';
+type State = 'checking' | 'paid' | 'pending' | 'cancelled' | 'failed';
 
 /**
- * Return page after Stripe. The payment is confirmed by Stripe's webhook on the server,
- * so we poll the reservation for a short while instead of trusting the URL.
+ * Return page after Stripe / FeexPay. The server checks the payment with the provider
+ * (payments-check) — the URL itself is never trusted. In "push" mode the sender validates
+ * the payment on their phone, so we wait longer.
  */
 export default function PaymentResult() {
   const { status, reservation } = useLocalSearchParams<{ status?: string; reservation?: string }>();
@@ -22,6 +23,7 @@ export default function PaymentResult() {
   const { session, loading } = useAuth();
   const [state, setState] = useState<State>(status === 'cancel' ? 'cancelled' : 'checking');
   const tries = useRef(0);
+  const push = status === 'push';
 
   useEffect(() => {
     if (state !== 'checking' || loading || !session || !reservation) return;
@@ -29,16 +31,17 @@ export default function PaymentResult() {
     const tick = async () => {
       if (stop) return;
       tries.current += 1;
-      const r = await fetchReservation(reservation).catch(() => null);
-      if (r?.paid) return setState('paid');
-      if (tries.current >= 15) return setState('pending');
-      setTimeout(tick, 2000);
+      const res = await checkPayment(reservation);
+      if (res === 'paid') return setState('paid');
+      if (res === 'failed') return setState('failed');
+      if (tries.current >= (push ? 60 : 20)) return setState('pending');
+      setTimeout(tick, 3000);
     };
     tick();
     return () => {
       stop = true;
     };
-  }, [state, loading, session, reservation]);
+  }, [state, loading, session, reservation, push]);
 
   const toReservation = () =>
     reservation ? router.replace({ pathname: '/reservation/[id]', params: { id: reservation } }) : router.replace('/(tabs)/tracking');
@@ -52,10 +55,12 @@ export default function PaymentResult() {
         <View style={{ alignItems: 'center', gap: 14, marginTop: 10 }}>
           <ActivityIndicator color={colors.gold} size="large" />
           <T v="h2" style={{ textAlign: 'center' }}>
-            Confirmation du paiement…
+            {push ? 'Validez le paiement sur votre téléphone' : 'Confirmation du paiement…'}
           </T>
-          <T v="body" color={colors.textMuted} style={{ textAlign: 'center' }}>
-            Nous attendons la confirmation de la banque.
+          <T v="body" color={colors.textMuted} style={{ textAlign: 'center', maxWidth: 300 }}>
+            {push
+              ? 'Vous allez recevoir une demande de votre opérateur mobile money. Saisissez votre code secret pour confirmer.'
+              : 'Nous attendons la confirmation du paiement.'}
           </T>
         </View>
       )}
@@ -86,6 +91,20 @@ export default function PaymentResult() {
         </>
       )}
 
+      {state === 'failed' && (
+        <>
+          <View style={[styles.badge, { backgroundColor: colors.cardHi }]}>
+            <Ionicons name="alert" size={40} color={colors.danger} />
+          </View>
+          <T v="h2" style={{ textAlign: 'center', marginTop: 18 }}>
+            Paiement refusé
+          </T>
+          <T v="body" color={colors.textMuted} style={{ textAlign: 'center', marginTop: 8, maxWidth: 300 }}>
+            Le paiement n’a pas abouti (solde insuffisant, refus ou délai dépassé). Aucun montant n’a été débité.
+          </T>
+        </>
+      )}
+
       {state === 'cancelled' && (
         <>
           <View style={[styles.badge, { backgroundColor: colors.cardHi }]}>
@@ -101,10 +120,10 @@ export default function PaymentResult() {
       )}
 
       <View style={{ width: '100%', gap: 12, marginTop: 'auto' }}>
-        {state === 'cancelled' && reservation ? (
+        {(state === 'cancelled' || state === 'failed') && reservation ? (
           <Button title="Réessayer" leftIcon="card-outline" onPress={() => router.replace({ pathname: '/payment', params: { reservation } })} />
         ) : null}
-        <Button title="Voir ma réservation" variant={state === 'cancelled' ? 'dark' : 'gold'} onPress={toReservation} />
+        <Button title="Voir ma réservation" variant={state === 'cancelled' || state === 'failed' ? 'dark' : 'gold'} onPress={toReservation} />
       </View>
     </View>
   );

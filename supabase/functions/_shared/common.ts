@@ -37,6 +37,39 @@ export function safeReturnUrl(url: unknown): string | null {
 export const withParams = (url: string, params: Record<string, string>) =>
   url + (url.includes('?') ? '&' : '?') + new URLSearchParams(params).toString();
 
+/* ---------- FeexPay (mobile money, amounts in XOF) ---------- */
+
+/** Networks enabled in the app: slug used in FeexPay's URL → phone country code. */
+export const FEEXPAY_NETWORKS: Record<string, string> = {
+  mtn: '229', moov: '229', celtiis_bj: '229', // Bénin
+  moov_tg: '228', togocom_tg: '228', // Togo
+  mtn_ci: '225', moov_ci: '225', orange_ci: '225', wave_ci: '225', // Côte d'Ivoire
+  orange_sn: '221', wave_sn: '221', free_sn: '221', // Sénégal
+  moov_bf: '226', wave_bf: '226', // Burkina Faso
+  mtn_cg: '242', // Congo Brazzaville
+};
+
+export const feexpayBase = () => (Deno.env.get('FEEXPAY_API_BASE') ?? 'https://api-v2.feexpay.me').replace(/\/$/, '');
+
+/** XOF amount for a price in the listing currency (EUR is pegged: 1 € = 655,957 FCFA). */
+export function toXof(amount: number, currency: string): number | null {
+  const c = currency.toUpperCase();
+  if (c === 'XOF') return Math.round(amount);
+  if (c === 'EUR') return Math.round(amount * 655.957);
+  return null; // USD etc.: card only
+}
+
+export async function feexpayStatus(reference: string) {
+  const key = Deno.env.get('FEEXPAY_API_KEY');
+  if (!key) throw new Error('FeexPay is not configured (FEEXPAY_API_KEY missing)');
+  const res = await fetch(`${feexpayBase()}/api/transactions/public/single/status/${encodeURIComponent(reference)}`, {
+    headers: { Authorization: `Bearer ${key}` },
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body?.message ?? `FeexPay status error ${res.status}`);
+  return body as { reference: string; amount: number; status: string; callback_info?: string | null; reason?: string };
+}
+
 /** Stripe uses whole units for zero-decimal currencies such as XOF. */
 export const ZERO_DECIMAL = new Set(['XOF', 'XAF', 'JPY', 'KRW', 'GNF', 'RWF']);
 export const toMinor = (amount: number, currency: string) =>

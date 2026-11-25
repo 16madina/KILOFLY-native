@@ -3,21 +3,21 @@ import * as Linking from 'expo-linking';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState, Loading } from '@/components/listing-bits';
 import { Avatar, BackButton, BrandHeader, Button, Card, Divider, T, tap, type IconName } from '@/components/ui';
 import { initialsOf, useAuth } from '@/lib/auth';
 import { money } from '@/lib/listings';
-import { startPayment, useReservation } from '@/lib/reservations';
+import { MOBILE_MONEY, startPayment, useReservation } from '@/lib/reservations';
 import { colors, fonts, radius } from '@/theme';
 
 type Method = 'stripe' | 'feexpay';
 
 const METHODS: { id: Method; label: string; sub: string; icon: IconName; tint: string; soon?: boolean }[] = [
   { id: 'stripe', label: 'Carte bancaire', sub: 'Visa, Mastercard, Apple Pay, Google Pay · via Stripe', icon: 'card-outline', tint: colors.gold },
-  { id: 'feexpay', label: 'Mobile money', sub: 'Wave, Orange Money, MTN, Moov · via FeexPay', icon: 'phone-portrait-outline', tint: '#1DC8FF', soon: true },
+  { id: 'feexpay', label: 'Mobile money', sub: 'Wave, Orange Money, MTN, Moov · via FeexPay', icon: 'phone-portrait-outline', tint: '#1DC8FF' },
 ];
 
 /** Where the payment page sends the user back: the web origin in the browser, the app deep link on a phone. */
@@ -31,6 +31,10 @@ export default function Payment() {
   const [method, setMethod] = useState<Method>('stripe');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [country, setCountry] = useState(0);
+  const [network, setNetwork] = useState(MOBILE_MONEY[0].networks[0][0]);
+  const [phone, setPhone] = useState('');
+  const [phoneFocus, setPhoneFocus] = useState(false);
 
   if (authLoading) return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
   if (!session) return <Redirect href={{ pathname: '/auth', params: { mode: 'login' } }} />;
@@ -57,10 +61,24 @@ export default function Payment() {
     setError(null);
     setBusy(true);
     const back = returnUrl();
-    const res = await startPayment(r.id, method, back);
-    if (res.error || !res.url) {
+    const cc = MOBILE_MONEY[country];
+    // Keep local leading zeros (Bénin 01…, Côte d'Ivoire 07…); drop a country code typed by the user.
+    let local = phone.replace(/\D/g, '');
+    if (local.startsWith(cc.code) && local.length > cc.code.length + 7) local = local.slice(cc.code.length);
+    if (method === 'feexpay' && local.length < 8) {
       setBusy(false);
-      return setError(res.error ?? 'Impossible d’ouvrir la page de paiement.');
+      return setError('Saisissez votre numéro mobile money.');
+    }
+    const res = await startPayment(r.id, method, back, method === 'feexpay' ? { network, phone: cc.code + local } : undefined);
+    if (res.error) {
+      setBusy(false);
+      return setError(res.error);
+    }
+    if (res.mode === 'push' || !res.url) {
+      // USSD push: the sender confirms on their phone; the result page checks with FeexPay.
+      setBusy(false);
+      router.replace({ pathname: '/payment-result', params: { status: 'push', reservation: r.id } });
+      return;
     }
     if (Platform.OS === 'web') {
       window.location.href = res.url; // Stripe redirects back to /payment-result
@@ -149,6 +167,73 @@ export default function Payment() {
             </View>
           </View>
 
+
+          {method === 'feexpay' && (
+            <Card style={{ gap: 12 }}>
+              {r.currency === 'USD' ? (
+                <T v="small" color={colors.warning}>
+                  Le mobile money n’accepte que les trajets en FCFA ou en euros. Payez par carte pour ce trajet.
+                </T>
+              ) : (
+                <>
+                  <T v="caption" color={colors.textMuted}>
+                    Pays
+                  </T>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                    {MOBILE_MONEY.map((c, i) => (
+                      <Pressable
+                        key={c.code}
+                        onPress={() => {
+                          tap();
+                          setCountry(i);
+                          setNetwork(c.networks[0][0]);
+                        }}
+                        style={[styles.chip, country === i && styles.chipActive]}>
+                        <T v="small" color={country === i ? colors.goldBright : colors.text}>
+                          {c.flag} {c.country}
+                        </T>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                  <T v="caption" color={colors.textMuted}>
+                    Opérateur
+                  </T>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    {MOBILE_MONEY[country].networks.map(([slug, label]) => (
+                      <Pressable key={slug} onPress={() => (tap(), setNetwork(slug))} style={[styles.chip, network === slug && styles.chipActive]}>
+                        <T v="small" color={network === slug ? colors.goldBright : colors.text}>
+                          {label}
+                        </T>
+                      </Pressable>
+                    ))}
+                  </View>
+                  <T v="caption" color={colors.textMuted}>
+                    Numéro mobile money
+                  </T>
+                  <View style={[styles.phone, phoneFocus && { borderColor: colors.gold }]}>
+                    <T v="bodyStrong" color={colors.textMuted}>
+                      +{MOBILE_MONEY[country].code}
+                    </T>
+                    <TextInput
+                      value={phone}
+                      onChangeText={setPhone}
+                      keyboardType="phone-pad"
+                      placeholder={MOBILE_MONEY[country].code === '229' ? '01 66 00 00 00' : '77 123 45 67'}
+                      placeholderTextColor={colors.textFaint}
+                      onFocus={() => setPhoneFocus(true)}
+                      onBlur={() => setPhoneFocus(false)}
+                      style={styles.phoneInput}
+                    />
+                  </View>
+                  <T v="caption" color={colors.textMuted}>
+                    {r.currency === 'EUR' ? 'Montant converti en FCFA (1 € = 655,957 FCFA). ' : ''}
+                    Selon l’opérateur, vous validerez sur votre téléphone ou sur la page de paiement.
+                  </T>
+                </>
+              )}
+            </Card>
+          )}
+
           <View style={styles.escrow}>
             <Ionicons name="shield-checkmark-outline" size={24} color={colors.success} />
             <View style={{ flex: 1 }}>
@@ -204,6 +289,27 @@ const styles = StyleSheet.create({
   methodIcon: { width: 44, height: 44, borderRadius: 12, borderWidth: 1.2, alignItems: 'center', justifyContent: 'center' },
   radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
   radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.gold },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.bgRaised,
+  },
+  chipActive: { borderColor: colors.gold, backgroundColor: colors.goldSoft },
+  phone: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    height: 52,
+    paddingHorizontal: 14,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.field,
+  },
+  phoneInput: { flex: 1, fontFamily: fonts.medium, fontSize: 16, color: colors.text, minWidth: 0 },
   escrow: {
     flexDirection: 'row',
     gap: 12,
