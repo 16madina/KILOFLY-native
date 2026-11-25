@@ -1,66 +1,77 @@
-// KiloFly design system — "Premium voyage"
-// Deep navy like an airline night cabin, gold taken from the suitcase in the logo,
-// and the brand sky-cyan kept as a secondary accent.
+// KiloFly design system — "Premium nuit & or"
+// Deep night-navy surfaces, champagne-gold accents, serif display titles.
 
 export const colors = {
-  ink: '#0A1633', // darkest navy, headers & primary text
-  navy: '#0E2A80', // brand primary
-  navySoft: '#1B3A94',
-  sky: '#2FB3E3', // brand cyan
-  gold: '#F5B83D', // premium accent (logo suitcase)
-  goldSoft: '#FFF3DA',
+  // surfaces
+  bg: '#030F1E',
+  bgRaised: '#0A1624',
+  card: '#111E2E',
+  cardHi: '#172638',
+  field: '#0D1A29',
+  overlay: 'rgba(3,15,30,0.72)',
 
-  bg: '#F4F6FB',
-  card: '#FFFFFF',
-  text: '#0A1633',
-  textMuted: '#6B7491',
-  textFaint: '#9AA2BA',
-  border: '#E5E9F2',
-  line: '#D5DBEA',
+  // lines
+  border: 'rgba(255,255,255,0.09)',
+  borderStrong: 'rgba(255,255,255,0.16)',
+  borderGold: 'rgba(228,188,131,0.55)',
 
-  success: '#1FA971',
-  successSoft: '#E3F6EE',
-  warning: '#E8912D',
-  warningSoft: '#FDF0E1',
-  danger: '#E5484D',
-  dangerSoft: '#FDE8E8',
+  // text
+  text: '#F4F1EA',
+  textMuted: 'rgba(232,236,244,0.72)',
+  textFaint: 'rgba(232,236,244,0.45)',
 
-  onDark: '#FFFFFF',
-  onDarkMuted: 'rgba(255,255,255,0.65)',
-  onDarkFaint: 'rgba(255,255,255,0.14)',
+  // gold
+  gold: '#E4BC83',
+  goldBright: '#F3D39B',
+  goldDeep: '#C79A58',
+  goldSoft: 'rgba(228,188,131,0.12)',
+  onGold: '#14110B', // text on gold surfaces
+
+  // status
+  success: '#3DBE7A',
+  successSoft: 'rgba(61,190,122,0.12)',
+  warning: '#E9A23B',
+  warningSoft: 'rgba(233,162,59,0.12)',
+  danger: '#E5675F',
+  dangerSoft: 'rgba(229,103,95,0.10)',
+  sky: '#5BB8F0',
 } as const;
 
 export const gradients = {
-  night: ['#0A1633', '#0E2A80'] as const,
-  cabin: ['#0E2A80', '#1B5FB8'] as const,
-  gold: ['#F8C95A', '#F0A52A'] as const,
-  photoFade: ['rgba(10,22,51,0)', 'rgba(10,22,51,0.85)'] as const,
+  gold: ['#F2D29C', '#E0B677', '#C99B5A'] as const,
+  goldSoft: ['rgba(228,188,131,0.28)', 'rgba(228,188,131,0.10)'] as const,
+  card: ['#16253A', '#0F1B2B'] as const,
+  header: ['#0B1A2E', '#030F1E'] as const,
+  photoFade: ['rgba(3,15,30,0.15)', 'rgba(3,15,30,0.92)'] as const,
+  photoLeft: ['rgba(17,30,46,0.97)', 'rgba(17,30,46,0.55)'] as const,
 };
 
 export const fonts = {
-  regular: 'PlusJakartaSans_400Regular',
-  medium: 'PlusJakartaSans_500Medium',
-  semibold: 'PlusJakartaSans_600SemiBold',
-  bold: 'PlusJakartaSans_700Bold',
-  extrabold: 'PlusJakartaSans_800ExtraBold',
+  regular: 'Inter_400Regular',
+  medium: 'Inter_500Medium',
+  semibold: 'Inter_600SemiBold',
+  bold: 'Inter_700Bold',
+  serif: 'PlayfairDisplay_600SemiBold',
+  serifBold: 'PlayfairDisplay_700Bold',
+  serifItalic: 'PlayfairDisplay_600SemiBold_Italic',
 };
 
-export const radius = { sm: 10, md: 16, lg: 22, xl: 28, pill: 999 };
+export const radius = { sm: 10, md: 14, lg: 18, xl: 24, pill: 999 };
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 28 };
 
 export const shadow = {
   card: {
-    shadowColor: '#0A1633',
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
-    elevation: 4,
+    elevation: 6,
   },
-  float: {
-    shadowColor: '#0A1633',
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 10,
+  gold: {
+    shadowColor: '#E4BC83',
+    shadowOpacity: 0.25,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
   },
 };
