@@ -93,6 +93,7 @@ export default function Announcements() {
                   <View key={r.id} style={[i > 0 && { borderTopWidth: 1, borderTopColor: colors.border }, r.status !== 'active' && { opacity: 0.55 }]}>
                     <RequestRow
                       r={r}
+                      onPress={() => router.push({ pathname: '/request/[id]', params: { id: r.id } })}
                       right={
                         <Pressable onPress={() => toggleRequest(r.id, r.status)} hitSlop={8} style={styles.reqAction}>
                           <Ionicons name={r.status === 'active' ? 'close-circle-outline' : 'refresh'} size={16} color={colors.gold} />

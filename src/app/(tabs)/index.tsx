@@ -128,7 +128,7 @@ export default function Home() {
             <Card style={{ paddingVertical: 4 }}>
               {requests.data.slice(0, 5).map((r, i) => (
                 <View key={r.id} style={i > 0 && { borderTopWidth: 1, borderTopColor: colors.border }}>
-                  <RequestRow r={r} />
+                  <RequestRow r={r} onPress={() => router.push({ pathname: '/request/[id]', params: { id: r.id } })} />
                 </View>
               ))}
             </Card>

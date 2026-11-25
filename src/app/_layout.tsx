@@ -59,6 +59,7 @@ export default function RootLayout() {
           <Stack.Screen name="payment-result" options={{ animation: 'fade' }} />
           <Stack.Screen name="reserve/[id]" options={{ presentation: 'modal' }} />
           <Stack.Screen name="reservation/[id]" />
+          <Stack.Screen name="request/[id]" />
           <Stack.Screen name="post-listing" options={{ presentation: 'modal' }} />
           <Stack.Screen name="post-request" options={{ presentation: 'modal' }} />
           <Stack.Screen name="conversation/[id]" />
