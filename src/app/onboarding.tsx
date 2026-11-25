@@ -5,16 +5,22 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ProfileChoices } from '@/components/profile-choice';
 import { AccentTitle, BrandHeader, IconButton, T } from '@/components/ui';
+import { useAuth } from '@/lib/auth';
 import { colors, fonts } from '@/theme';
 
 export default function Onboarding() {
   const insets = useSafeAreaInsets();
+  const { setGuest } = useAuth();
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ paddingBottom: insets.bottom + 30 }}>
       <BrandHeader top={insets.top} art={false}>
         <View style={styles.navRow}>
           <IconButton icon="chevron-back" onPress={() => (router.canGoBack() ? router.back() : router.replace('/welcome'))} />
-          <Pressable onPress={() => router.replace('/(tabs)')} hitSlop={10} style={styles.skip}>
+          <Pressable
+            onPress={() => {
+              setGuest(true);
+              router.replace('/(tabs)');
+            }} hitSlop={10} style={styles.skip}>
             <T v="bodyStrong" color={colors.gold}>
               Passer
             </T>
@@ -42,7 +48,11 @@ export default function Onboarding() {
       </BrandHeader>
 
       <View style={{ paddingHorizontal: 16, marginTop: 22 }}>
-        <ProfileChoices onChoose={() => router.push('/auth')} />
+        <ProfileChoices
+          onChoose={(key) =>
+            router.push({ pathname: '/auth', params: { mode: 'signup', type: key === 'sender' ? 'shipper' : key === 'pro' ? 'professional' : 'traveler' } })
+          }
+        />
       </View>
     </ScrollView>
   );

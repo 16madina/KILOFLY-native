@@ -1,11 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Redirect } from 'expo-router';
 import { Tabs, type BottomTabBarProps } from 'expo-router/js-tabs';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { unreadCount } from '@/components/messages-list';
 import { tap, type IconName } from '@/components/ui';
+import { useAuth } from '@/lib/auth';
 import { colors, fonts, gradients, shadow } from '@/theme';
 
 // Accueil · Recherche · (+) Annonces · Suivi (colis + messages) · Profil
@@ -63,6 +65,11 @@ function TabBar({ state, navigateToTab }: BottomTabBarProps) {
 }
 
 export default function TabsLayout() {
+  const { session, guest, loading } = useAuth();
+  if (loading) return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
+  // First launch without an account: show the welcome screen (unless they chose "Passer").
+  if (!session && !guest) return <Redirect href="/welcome" />;
+
   return (
     <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: colors.bg } }}>
       <Tabs.Screen name="index" />

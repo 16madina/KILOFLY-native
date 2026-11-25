@@ -16,6 +16,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { AuthProvider } from '@/lib/auth';
 import { colors } from '@/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -44,6 +45,7 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
+      <AuthProvider>
       <ThemeProvider value={theme}>
         <StatusBar style="light" />
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
@@ -56,8 +58,10 @@ export default function RootLayout() {
           <Stack.Screen name="post-listing" options={{ presentation: 'modal' }} />
           <Stack.Screen name="conversation/[id]" />
           <Stack.Screen name="wallet" />
+          <Stack.Screen name="edit-profile" />
         </Stack>
       </ThemeProvider>
+      </AuthProvider>
     </GestureHandlerRootView>
   );
 }

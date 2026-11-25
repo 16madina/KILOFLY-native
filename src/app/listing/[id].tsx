@@ -22,6 +22,8 @@ import {
   VerifiedBadge,
   type IconName,
 } from '@/components/ui';
+import { requireAuth } from '@/components/sign-in-prompt';
+import { useAuth } from '@/lib/auth';
 import { cityCodes, cityImages, formatPrice, listings, shortName } from '@/data/mock';
 import { colors, fonts, radius } from '@/theme';
 
@@ -51,6 +53,7 @@ export default function ListingDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const l = listings.find((x) => x.id === id) ?? listings[0];
   const insets = useSafeAreaInsets();
+  const { session } = useAuth();
   const [kg, setKg] = useState(Math.min(3, l.availableKg));
   const booked = l.totalKg - l.availableKg;
   const first = l.traveler.name.split(' ')[0];
@@ -190,7 +193,7 @@ export default function ListingDetail() {
                 title={`Réserver · ${formatPrice(kg * l.pricePerKg, l.currency)}`}
                 variant="outline"
                 small
-                onPress={() => router.push({ pathname: '/payment', params: { id: l.id, kg: String(kg) } })}
+                onPress={() => requireAuth(!!session, () => router.push({ pathname: '/payment', params: { id: l.id, kg: String(kg) } }))}
                 style={{ flex: 1 }}
               />
             </View>
@@ -233,7 +236,7 @@ export default function ListingDetail() {
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-        <Button title={`Contacter ${first}`} leftIcon="chatbubble-outline" onPress={() => router.push('/conversation/c1')} />
+        <Button title={`Contacter ${first}`} leftIcon="chatbubble-outline" onPress={() => requireAuth(!!session, () => router.push('/conversation/c1'))} />
       </View>
     </View>
   );

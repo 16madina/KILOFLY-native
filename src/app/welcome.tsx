@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AccentTitle, art, Button, Logo, T, type IconName } from '@/components/ui';
+import { useAuth } from '@/lib/auth';
 import { colors } from '@/theme';
 
 const perks: [IconName, string][] = [
@@ -16,6 +17,8 @@ const perks: [IconName, string][] = [
 
 export default function Welcome() {
   const insets = useSafeAreaInsets();
+  const { session } = useAuth();
+  if (session) return <Redirect href="/(tabs)" />;
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.bg }}
@@ -49,7 +52,7 @@ export default function Welcome() {
 
       <View style={{ gap: 14, marginTop: 28 }}>
         <Button title="Commencer" icon="arrow-forward" onPress={() => router.push('/onboarding')} />
-        <Button title="Se connecter" leftIcon="person-outline" variant="dark" onPress={() => router.push('/auth')} />
+        <Button title="Se connecter" leftIcon="person-outline" variant="dark" onPress={() => router.push({ pathname: '/auth', params: { mode: 'login' } })} />
       </View>
     </ScrollView>
   );

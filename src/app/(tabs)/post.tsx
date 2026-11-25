@@ -3,13 +3,16 @@ import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ProfileChoices } from '@/components/profile-choice';
+import { requireAuth } from '@/components/sign-in-prompt';
 import { TicketCard } from '@/components/ticket-card';
 import { AccentTitle, BrandHeader, SectionHeader, T } from '@/components/ui';
 import { listings } from '@/data/mock';
+import { useAuth } from '@/lib/auth';
 import { colors } from '@/theme';
 
 export default function Announcements() {
   const insets = useSafeAreaInsets();
+  const { session } = useAuth();
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
       <BrandHeader top={insets.top}>
@@ -20,7 +23,7 @@ export default function Announcements() {
       </BrandHeader>
 
       <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
-        <ProfileChoices onChoose={() => router.push('/post-listing')} />
+        <ProfileChoices onChoose={() => requireAuth(!!session, () => router.push('/post-listing'))} />
       </View>
 
       <View style={{ paddingHorizontal: 16, marginTop: 30 }}>

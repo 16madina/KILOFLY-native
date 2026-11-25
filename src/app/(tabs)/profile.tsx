@@ -5,20 +5,32 @@ import { router, type Href } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { art, Avatar, BrandHeader, Card, Divider, SectionHeader, Stars, T, tap, VerifiedBadge, type IconName } from '@/components/ui';
-import { me } from '@/data/mock';
+import { art, Avatar, BrandHeader, Button, Card, Divider, SectionHeader, Stars, T, tap, VerifiedBadge, type IconName } from '@/components/ui';
+import { initialsOf, useAuth } from '@/lib/auth';
+import { memberSince, useMyStats } from '@/lib/use-my-stats';
 import { colors, fonts, radius } from '@/theme';
 
 const menu: { icon: IconName; title: string; sub: string; href?: Href }[] = [
   { icon: 'cube-outline', title: 'Mes annonces', sub: 'Gérez vos voyages et vos demandes de colis', href: '/(tabs)/post' },
   { icon: 'swap-horizontal', title: 'Mes transactions', sub: 'Suivez vos envois, réceptions et paiements', href: '/(tabs)/tracking' },
   { icon: 'wallet-outline', title: 'Paiements', sub: 'Portefeuille, retraits, soldes et factures', href: '/wallet' },
+  { icon: 'person-circle-outline', title: 'Informations personnelles', sub: 'Nom, photo, téléphone, ville', href: '/edit-profile' },
   { icon: 'shield-checkmark-outline', title: 'Vérification', sub: 'Identité, téléphone et score de confiance' },
   { icon: 'settings-outline', title: 'Préférences', sub: 'Notifications, confidentialité, langue, etc.' },
 ];
 
 export default function Profile() {
   const insets = useSafeAreaInsets();
+  const { session, profile, signOut } = useAuth();
+  const stats = useMyStats();
+
+  if (!session) return <GuestProfile top={insets.top} />;
+
+  const name = profile?.full_name || 'Mon compte';
+  const parts = name.split(' ').filter(Boolean);
+  const short = parts.length > 1 ? `${parts[0]} ${parts[1][0]}.` : name;
+  const verified = !!profile?.id_verified;
+
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
       <BrandHeader top={insets.top}>
@@ -34,23 +46,33 @@ export default function Profile() {
         {/* Identity card */}
         <Card style={{ padding: 0 }}>
           <View style={styles.identity}>
-            <Avatar initials={me.initials} size={104} ring verified={me.verified} />
+            <Avatar
+              photo={profile?.avatar_url ? { uri: profile.avatar_url } : undefined}
+              initials={initialsOf(name)}
+              size={104}
+              ring
+              verified={verified}
+            />
             <View style={{ flex: 1, gap: 6 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <T v="title" style={{ fontSize: 24 }}>
-                  {me.name.split(' ')[0]} {me.name.split(' ')[1][0]}.
+                <T v="title" style={{ fontSize: 24, flexShrink: 1 }} numberOfLines={1}>
+                  {short}
                 </T>
-                <VerifiedBadge size={22} />
+                {verified && <VerifiedBadge size={22} />}
               </View>
-              <Stars rating={me.rating} reviews={me.reviews} size="large" />
-              {me.premium && (
-                <View style={styles.premium}>
-                  <Ionicons name="ribbon-outline" size={16} color={colors.gold} />
-                  <T v="small" color={colors.goldBright} style={{ fontFamily: fonts.medium }}>
-                    Membre Premium
-                  </T>
-                </View>
+              {stats?.rating != null ? (
+                <Stars rating={stats.rating} reviews={stats.reviews} size="large" />
+              ) : (
+                <T v="small" color={colors.textMuted}>
+                  Pas encore d’avis
+                </T>
               )}
+              <View style={styles.premium}>
+                <Ionicons name={verified ? 'shield-checkmark-outline' : 'shield-outline'} size={16} color={colors.gold} />
+                <T v="small" color={colors.goldBright} style={{ fontFamily: fonts.medium }}>
+                  {verified ? 'Identité vérifiée' : 'Identité non vérifiée'}
+                </T>
+              </View>
             </View>
           </View>
           <View style={styles.identityBar}>
@@ -58,20 +80,20 @@ export default function Profile() {
               <Ionicons name="calendar-outline" size={20} color={colors.text} />
               <View>
                 <T v="caption">Membre depuis</T>
-                <T v="caption">{me.memberSince}</T>
+                <T v="caption">{memberSince(profile?.created_at)}</T>
               </View>
             </View>
             <Divider vertical style={{ marginVertical: 4 }} />
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, paddingLeft: 10 }}>
-              <Ionicons name="ribbon-outline" size={24} color={colors.gold} />
-              <View>
-                <T v="caption">Statut</T>
-                <T v="small" color={colors.gold} style={{ fontFamily: fonts.semibold }}>
-                  Premium
+              <Ionicons name={typeIcon(profile?.user_type)} size={22} color={colors.gold} />
+              <View style={{ flexShrink: 1 }}>
+                <T v="caption">Profil</T>
+                <T v="small" color={colors.gold} style={{ fontFamily: fonts.semibold }} numberOfLines={1}>
+                  {typeLabel(profile?.user_type)}
                 </T>
               </View>
             </View>
-            <Pressable style={styles.edit}>
+            <Pressable style={styles.edit} onPress={() => router.push('/edit-profile')}>
               <Ionicons name="create-outline" size={16} color={colors.text} />
               <T v="caption">Modifier</T>
             </Pressable>
@@ -80,21 +102,25 @@ export default function Profile() {
 
         {/* Big counters */}
         <View style={{ flexDirection: 'row', gap: 12 }}>
-          <Counter icon="airplane" value={me.trips} label="Voyages effectués" />
-          <Counter icon="cube-outline" value={me.shipments} label="Colis envoyés" />
+          <Counter icon="airplane" value={profile?.completed_trips ?? 0} label="Voyages effectués" />
+          <Counter icon="cube-outline" value={stats?.shipments ?? 0} label="Colis envoyés" />
         </View>
 
         {/* Stats */}
         <View style={{ marginTop: 8 }}>
-          <SectionHeader title="Mes statistiques" action="Voir le détail" />
+          <SectionHeader title="Mes statistiques" />
           <Card style={{ flexDirection: 'row', paddingHorizontal: 4 }}>
-            <Stat icon="checkmark-circle-outline" value={`${me.successRate} %`} label="Taux de succès" />
+            <Stat icon="chatbubbles-outline" value={`${profile?.response_rate ?? 0} %`} label="Taux de réponse" />
             <Divider vertical />
-            <Stat icon="star-outline" value={`${me.rating.toFixed(1).replace('.', ',')}/5`} label="Note moyenne" />
+            <Stat
+              icon="star-outline"
+              value={stats?.rating != null ? `${stats.rating.toFixed(1).replace('.', ',')}/5` : '—'}
+              label="Note moyenne"
+            />
             <Divider vertical />
-            <Stat icon="people-outline" value={String(me.reviews)} label="Avis reçus" />
+            <Stat icon="people-outline" value={String(stats?.reviews ?? 0)} label="Avis reçus" />
             <Divider vertical />
-            <Stat icon="leaf-outline" value={me.co2} label="CO₂ évitées" />
+            <Stat icon="megaphone-outline" value={String(stats?.listings ?? 0)} label="Annonces" />
           </Card>
         </View>
 
@@ -124,12 +150,47 @@ export default function Profile() {
           ))}
         </View>
 
-        <Pressable onPress={() => router.push('/welcome')} style={styles.logout}>
+        <T v="caption" color={colors.textFaint} style={{ textAlign: 'center' }}>
+          Connecté avec {session.user.email}
+        </T>
+        <Pressable
+          onPress={async () => {
+            await signOut();
+            router.replace('/welcome');
+          }}
+          style={styles.logout}>
           <Ionicons name="log-out-outline" size={18} color={colors.danger} />
           <T v="bodyStrong" color={colors.danger}>
             Se déconnecter
           </T>
         </Pressable>
+      </View>
+    </ScrollView>
+  );
+}
+
+const typeLabel = (t?: string) => (t === 'shipper' ? 'Expéditeur' : t === 'professional' ? 'Professionnel' : 'Voyageur');
+const typeIcon = (t?: string): IconName => (t === 'shipper' ? 'cube-outline' : t === 'professional' ? 'bus-outline' : 'airplane-outline');
+
+function GuestProfile({ top }: { top: number }) {
+  return (
+    <ScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ paddingBottom: 120 }}>
+      <BrandHeader top={top}>
+        <T v="display" style={{ marginTop: 34 }}>
+          Mon profil
+        </T>
+        <T v="body" color={colors.textMuted} style={{ marginTop: 6, maxWidth: 250 }}>
+          Connectez-vous pour publier, réserver et suivre vos colis.
+        </T>
+      </BrandHeader>
+      <View style={{ paddingHorizontal: 16, marginTop: 24, gap: 12 }}>
+        <Button title="Créer un compte" icon="arrow-forward" onPress={() => router.push({ pathname: '/auth', params: { mode: 'signup' } })} />
+        <Button
+          title="Se connecter"
+          leftIcon="person-outline"
+          variant="dark"
+          onPress={() => router.push({ pathname: '/auth', params: { mode: 'login' } })}
+        />
       </View>
     </ScrollView>
   );

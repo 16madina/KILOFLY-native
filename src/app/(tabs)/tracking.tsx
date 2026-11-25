@@ -5,7 +5,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MessagesList, unreadCount } from '@/components/messages-list';
 import { PackageTracking } from '@/components/package-tracking';
+import { SignInPrompt } from '@/components/sign-in-prompt';
 import { AccentTitle, BrandHeader, T, tap } from '@/components/ui';
+import { useAuth } from '@/lib/auth';
 import { colors, fonts, radius } from '@/theme';
 
 type Segment = 'colis' | 'messages';
@@ -14,6 +16,7 @@ type Segment = 'colis' | 'messages';
 export default function Suivi() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ tab?: Segment }>();
+  const { session } = useAuth();
   const [segment, setSegment] = useState<Segment>(params.tab ?? 'colis');
 
   useEffect(() => {
@@ -55,7 +58,18 @@ export default function Suivi() {
           })}
         </View>
 
-        <View style={{ marginTop: 16 }}>{segment === 'colis' ? <PackageTracking /> : <MessagesList />}</View>
+        <View style={{ marginTop: 16 }}>
+          {!session ? (
+            <SignInPrompt
+              icon={segment === 'colis' ? 'cube-outline' : 'chatbubbles-outline'}
+              text={segment === 'colis' ? 'Connectez-vous pour suivre vos colis en temps réel.' : 'Connectez-vous pour discuter avec les voyageurs.'}
+            />
+          ) : segment === 'colis' ? (
+            <PackageTracking />
+          ) : (
+            <MessagesList />
+          )}
+        </View>
       </View>
     </ScrollView>
   );
