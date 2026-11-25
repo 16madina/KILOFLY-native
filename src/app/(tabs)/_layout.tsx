@@ -1,16 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Tabs, type BottomTabBarProps } from 'expo-router/js-tabs';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { unreadCount } from '@/components/messages-list';
 import { tap, type IconName } from '@/components/ui';
-import { colors, fonts } from '@/theme';
+import { colors, fonts, gradients, shadow } from '@/theme';
 
-const items: Record<string, { label: string; icon: IconName; iconActive: IconName; dot?: boolean; badge?: number }> = {
+// Accueil · Recherche · (+) Annonces · Suivi (colis + messages) · Profil
+const items: Record<string, { label: string; icon: IconName; iconActive: IconName; badge?: number; center?: boolean }> = {
   index: { label: 'Accueil', icon: 'home-outline', iconActive: 'home' },
-  tracking: { label: 'Suivi', icon: 'cube-outline', iconActive: 'cube', badge: 1 },
-  messages: { label: 'Messages', icon: 'chatbox-ellipses-outline', iconActive: 'chatbox-ellipses', dot: true },
-  post: { label: 'Annonces', icon: 'briefcase-outline', iconActive: 'briefcase' },
+  search: { label: 'Recherche', icon: 'search-outline', iconActive: 'search' },
+  post: { label: 'Annonces', icon: 'add', iconActive: 'add', center: true },
+  tracking: { label: 'Suivi', icon: 'cube-outline', iconActive: 'cube', badge: 1 + unreadCount },
   profile: { label: 'Profil', icon: 'person-outline', iconActive: 'person' },
 };
 
@@ -23,17 +26,28 @@ function TabBar({ state, navigateToTab }: BottomTabBarProps) {
         if (!item) return null;
         const focused = state.index === i;
         const tint = focused ? colors.gold : colors.text;
+        const onPress = () => {
+          tap();
+          if (!focused) navigateToTab(route.key);
+        };
+
+        if (item.center) {
+          return (
+            <Pressable key={route.key} onPress={onPress} style={styles.item}>
+              <View style={styles.fabRing}>
+                <LinearGradient colors={gradients.gold} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.fab}>
+                  <Ionicons name="add" size={32} color={colors.onGold} />
+                </LinearGradient>
+              </View>
+              <Text style={[styles.label, { color: tint }, focused && { fontFamily: fonts.semibold }]}>{item.label}</Text>
+            </Pressable>
+          );
+        }
+
         return (
-          <Pressable
-            key={route.key}
-            onPress={() => {
-              tap();
-              if (!focused) navigateToTab(route.key);
-            }}
-            style={styles.item}>
+          <Pressable key={route.key} onPress={onPress} style={styles.item}>
             <View>
               <Ionicons name={focused ? item.iconActive : item.icon} size={26} color={tint} />
-              {item.dot && <View style={styles.dot} />}
               {item.badge ? (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>{item.badge}</Text>
@@ -52,13 +66,15 @@ export default function TabsLayout() {
   return (
     <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: colors.bg } }}>
       <Tabs.Screen name="index" />
-      <Tabs.Screen name="tracking" />
-      <Tabs.Screen name="messages" />
+      <Tabs.Screen name="search" />
       <Tabs.Screen name="post" />
+      <Tabs.Screen name="tracking" />
       <Tabs.Screen name="profile" />
     </Tabs>
   );
 }
+
+const BAR = '#0C1A27';
 
 const styles = StyleSheet.create({
   bar: {
@@ -67,9 +83,10 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     flexDirection: 'row',
+    alignItems: 'flex-end',
     paddingTop: 12,
     paddingHorizontal: 6,
-    backgroundColor: '#0C1A27',
+    backgroundColor: BAR,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     borderTopWidth: 1,
@@ -77,20 +94,21 @@ const styles = StyleSheet.create({
   },
   item: { flex: 1, alignItems: 'center', gap: 4 },
   label: { fontFamily: fonts.regular, fontSize: 12 },
-  dot: { position: 'absolute', top: -2, right: -4, width: 10, height: 10, borderRadius: 5, backgroundColor: colors.gold, borderWidth: 2, borderColor: '#0C1A27' },
+  fabRing: { marginTop: -34, padding: 5, borderRadius: 36, backgroundColor: BAR },
+  fab: { width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center', ...shadow.gold },
   badge: {
     position: 'absolute',
     top: -5,
-    right: -9,
-    minWidth: 17,
-    height: 17,
+    right: -10,
+    minWidth: 18,
+    height: 18,
     borderRadius: 9,
     backgroundColor: colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
     borderWidth: 2,
-    borderColor: '#0C1A27',
+    borderColor: BAR,
   },
   badgeText: { color: colors.onGold, fontFamily: fonts.bold, fontSize: 9.5 },
 });
