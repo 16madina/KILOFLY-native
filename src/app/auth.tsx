@@ -58,7 +58,8 @@ export default function Auth() {
         setPassword('');
         return setInfo(`Compte créé ! Un e-mail de confirmation a été envoyé à ${email.trim()}. Cliquez sur le lien, puis connectez-vous.`);
       }
-      router.replace('/(tabs)');
+      // New account: land on the profile page.
+      router.replace('/(tabs)/profile');
     }
   };
 
