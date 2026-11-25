@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -303,16 +303,25 @@ export default function ListingDetail() {
             <Button title="Réactiver mon annonce" leftIcon="refresh" onPress={() => changeStatus('active')} />
           )
         ) : (
-          <>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
             <Button
-              title={`Contacter ${first}`}
+              title="Contacter"
+              variant="dark"
               leftIcon="chatbubble-outline"
-              onPress={() => requireAuth(!!session, () => setNote('La messagerie arrive à l’étape 4 du plan.'))}
+              onPress={() => requireAuth(!!session, () => setNote(`La messagerie avec ${first} arrive à l’étape 4 du plan.`))}
+              style={{ flex: 1 }}
             />
-            <T v="caption" color={colors.textFaint} style={{ textAlign: 'center', marginTop: 6 }}>
-              Réservation et paiement : bientôt disponibles
-            </T>
-          </>
+            {l.status === 'active' && l.remainingKg > 0 ? (
+              <Button
+                title={`Réserver ${kg} kg`}
+                icon="arrow-forward"
+                onPress={() => requireAuth(!!session, () => router.push({ pathname: '/reserve/[id]', params: { id: l.id, kg: String(kg) } }))}
+                style={{ flex: 1.4 }}
+              />
+            ) : (
+              <Button title="Complet" variant="dark" style={{ flex: 1.4, opacity: 0.6 }} />
+            )}
+          </View>
         )}
       </View>
     </View>

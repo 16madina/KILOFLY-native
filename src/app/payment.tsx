@@ -1,58 +1,80 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
-import { router, useLocalSearchParams } from 'expo-router';
+import * as Linking from 'expo-linking';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AccentTitle, art, Avatar, BackButton, BrandHeader, Button, Card, Divider, Logo, T, tap, type IconName } from '@/components/ui';
-import { cityCodes, formatPrice, listings, shortName } from '@/data/mock';
+import { EmptyState, Loading } from '@/components/listing-bits';
+import { Avatar, BackButton, BrandHeader, Button, Card, Divider, T, tap, type IconName } from '@/components/ui';
+import { initialsOf, useAuth } from '@/lib/auth';
+import { money } from '@/lib/listings';
+import { startPayment, useReservation } from '@/lib/reservations';
 import { colors, fonts, radius } from '@/theme';
 
-const methods: { id: string; label: string; sub: string; icon: IconName; tint: string }[] = [
-  { id: 'card', label: 'Carte bancaire', sub: 'Visa, Mastercard · via Stripe', icon: 'card-outline', tint: colors.gold },
-  { id: 'wave', label: 'Wave', sub: 'Sénégal, Côte d’Ivoire, Mali', icon: 'water-outline', tint: '#1DC8FF' },
-  { id: 'om', label: 'Orange Money', sub: 'Paiement mobile', icon: 'phone-portrait-outline', tint: '#FF7900' },
+type Method = 'stripe' | 'feexpay';
+
+const METHODS: { id: Method; label: string; sub: string; icon: IconName; tint: string; soon?: boolean }[] = [
+  { id: 'stripe', label: 'Carte bancaire', sub: 'Visa, Mastercard, Apple Pay, Google Pay · via Stripe', icon: 'card-outline', tint: colors.gold },
+  { id: 'feexpay', label: 'Mobile money', sub: 'Wave, Orange Money, MTN, Moov · via FeexPay', icon: 'phone-portrait-outline', tint: '#1DC8FF', soon: true },
 ];
 
+/** Where the payment page sends the user back: the web origin in the browser, the app deep link on a phone. */
+const returnUrl = () => (Platform.OS === 'web' ? `${window.location.origin}/payment-result` : Linking.createURL('payment-result'));
+
 export default function Payment() {
-  const { id, kg: kgParam } = useLocalSearchParams<{ id: string; kg: string }>();
-  const l = listings.find((x) => x.id === id) ?? listings[0];
-  const kg = Number(kgParam ?? 3);
+  const { reservation } = useLocalSearchParams<{ reservation: string }>();
   const insets = useSafeAreaInsets();
-  const [method, setMethod] = useState('card');
-  const [done, setDone] = useState(false);
+  const { session, loading: authLoading } = useAuth();
+  const { data: r, loading } = useReservation(reservation);
+  const [method, setMethod] = useState<Method>('stripe');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const subtotal = kg * l.pricePerKg;
-  const fee = Math.round(subtotal * 0.1 * 100) / 100;
-  const total = subtotal + fee;
-
-  if (done) {
+  if (authLoading) return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
+  if (!session) return <Redirect href={{ pathname: '/auth', params: { mode: 'login' } }} />;
+  if (loading && !r) {
     return (
-      <View style={[styles.success, { paddingTop: insets.top + 30, paddingBottom: insets.bottom + 24 }]}>
-        <Logo size={30} center />
-        <Image source={art.window} style={styles.successArt} contentFit="cover" />
-        <View style={styles.successIcon}>
-          <Ionicons name="checkmark" size={40} color={colors.onGold} />
-        </View>
-        <AccentTitle before="Envoi " accent="sécurisé" after=" !" style={{ textAlign: 'center', marginTop: 18 }} />
-        <T v="body" color={colors.textMuted} style={{ textAlign: 'center', marginTop: 8, maxWidth: 300 }}>
-          {l.traveler.name.split(' ')[0]} a été notifié(e). Convenez ensemble du lieu de remise du colis.
-        </T>
-        <View style={styles.successTicket}>
-          <T v="title">{cityCodes[l.from]}</T>
-          <Ionicons name="airplane" size={20} color={colors.gold} />
-          <T v="title">{cityCodes[l.to]}</T>
-          <View style={{ width: 1, height: 30, backgroundColor: colors.border }} />
-          <T v="h3">{kg} kg</T>
-        </View>
-        <View style={{ width: '100%', gap: 12, marginTop: 'auto' }}>
-          <Button title="Écrire au voyageur" leftIcon="chatbubble-outline" onPress={() => router.replace('/conversation/c1')} />
-          <Button title="Suivre mon colis" variant="dark" onPress={() => router.replace('/(tabs)/tracking')} />
-        </View>
+      <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: insets.top + 60 }}>
+        <Loading />
       </View>
     );
   }
+  if (!r || r.role !== 'buyer') {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: insets.top + 20, paddingHorizontal: 16, gap: 16 }}>
+        <BackButton />
+        <EmptyState icon="card-outline" title="Paiement indisponible" text="Cette réservation n’existe pas ou ne vous concerne pas." />
+      </View>
+    );
+  }
+  if (r.status !== 'approved') {
+    return <Redirect href={{ pathname: '/reservation/[id]', params: { id: r.id } }} />;
+  }
+
+  const pay = async () => {
+    setError(null);
+    setBusy(true);
+    const back = returnUrl();
+    const res = await startPayment(r.id, method, back);
+    if (res.error || !res.url) {
+      setBusy(false);
+      return setError(res.error ?? 'Impossible d’ouvrir la page de paiement.');
+    }
+    if (Platform.OS === 'web') {
+      window.location.href = res.url; // Stripe redirects back to /payment-result
+      return;
+    }
+    const result = await WebBrowser.openAuthSessionAsync(res.url, back);
+    setBusy(false);
+    if (result.type === 'success') {
+      const { queryParams } = Linking.parse(result.url);
+      router.replace({ pathname: '/payment-result', params: { status: String(queryParams?.status ?? 'success'), reservation: r.id } });
+    } else {
+      router.replace({ pathname: '/payment-result', params: { status: 'check', reservation: r.id } });
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -73,24 +95,24 @@ export default function Payment() {
         <View style={{ padding: 16, gap: 18 }}>
           <Card>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <Avatar photo={l.traveler.photo} initials={l.traveler.initials} size={46} />
+              <Avatar photo={r.other.avatar ? { uri: r.other.avatar } : undefined} initials={initialsOf(r.other.name)} size={46} />
               <View style={{ flex: 1 }}>
                 <T v="h3" style={{ fontFamily: fonts.serif, fontSize: 18 }}>
-                  {shortName(l.traveler.name)}
+                  {r.other.name}
                 </T>
                 <T v="small" color={colors.textMuted}>
-                  {l.from} → {l.to} · {l.departDate}
+                  {r.from} → {r.to} · {r.kg} kg
                 </T>
               </View>
             </View>
             <Divider style={{ marginVertical: 14 }} />
-            <Line label={`${kg} kg × ${formatPrice(l.pricePerKg, l.currency)}`} value={formatPrice(subtotal, l.currency)} />
-            <Line label="Frais de service KiloFly (10 %)" value={formatPrice(fee, l.currency)} />
+            <Line label={`${r.kg} kg × ${money(r.pricePerKg, r.currency)}`} value={money(r.totalPrice, r.currency)} />
+            <Line label="Frais de service KiloFly (5 %)" value={money(r.buyerFee, r.currency)} />
             <Divider style={{ marginVertical: 8 }} />
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <T v="h3">Total</T>
               <T v="title" color={colors.goldBright}>
-                {formatPrice(total, l.currency)}
+                {money(r.buyerTotal, r.currency)}
               </T>
             </View>
           </Card>
@@ -100,15 +122,22 @@ export default function Payment() {
               Moyen de paiement
             </T>
             <View style={{ gap: 10 }}>
-              {methods.map((m) => {
+              {METHODS.map((m) => {
                 const active = method === m.id;
                 return (
-                  <Pressable key={m.id} onPress={() => (tap(), setMethod(m.id))} style={[styles.method, active && styles.methodActive]}>
+                  <Pressable
+                    key={m.id}
+                    disabled={m.soon}
+                    onPress={() => (tap(), setMethod(m.id))}
+                    style={[styles.method, active && styles.methodActive, m.soon && { opacity: 0.55 }]}>
                     <View style={[styles.methodIcon, { borderColor: m.tint }]}>
                       <Ionicons name={m.icon} size={20} color={m.tint} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <T v="bodyStrong">{m.label}</T>
+                      <T v="bodyStrong">
+                        {m.label}
+                        {m.soon ? '  ·  bientôt' : ''}
+                      </T>
                       <T v="caption" color={colors.textMuted}>
                         {m.sub}
                       </T>
@@ -125,15 +154,25 @@ export default function Payment() {
             <View style={{ flex: 1 }}>
               <T v="bodyStrong">Paiement bloqué jusqu’à la livraison</T>
               <T v="small" color={colors.textMuted}>
-                Le voyageur n’est payé qu’après la remise confirmée par le destinataire.
+                Le voyageur n’est payé qu’une fois le colis livré au destinataire.
               </T>
             </View>
           </View>
+
+          {error && (
+            <T v="small" color={colors.danger} style={{ textAlign: 'center' }}>
+              {error}
+            </T>
+          )}
         </View>
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-        <Button title={`Payer ${formatPrice(total, l.currency)}`} leftIcon="lock-closed" onPress={() => setDone(true)} />
+        {busy ? (
+          <ActivityIndicator color={colors.gold} style={{ height: 56 }} />
+        ) : (
+          <Button title={`Payer ${money(r.buyerTotal, r.currency)}`} leftIcon="lock-closed" onPress={pay} />
+        )}
       </View>
     </View>
   );
@@ -175,29 +214,4 @@ const styles = StyleSheet.create({
     backgroundColor: colors.successSoft,
   },
   footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingTop: 12, backgroundColor: 'rgba(3,15,30,0.94)' },
-  success: { flex: 1, alignItems: 'center', paddingHorizontal: 24, backgroundColor: colors.bg },
-  successArt: { width: '115%', height: 220, marginTop: 16, opacity: 0.9 },
-  successIcon: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: colors.gold,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: -38,
-    borderWidth: 4,
-    borderColor: colors.bg,
-  },
-  successTicket: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    marginTop: 22,
-    paddingHorizontal: 22,
-    paddingVertical: 14,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderGold,
-    backgroundColor: colors.card,
-  },
 });

@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MessagesList, unreadCount } from '@/components/messages-list';
-import { PackageTracking } from '@/components/package-tracking';
+import { ReservationsPanel } from '@/components/reservations-panel';
 import { SignInPrompt } from '@/components/sign-in-prompt';
 import { AccentTitle, BrandHeader, T, tap } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
@@ -36,7 +36,7 @@ export default function Suivi() {
         <View style={styles.segment}>
           {(
             [
-              ['colis', 'Suivi de colis', 1],
+              ['colis', 'Suivi de colis', 0],
               ['messages', 'Messages', unreadCount],
             ] as [Segment, string, number][]
           ).map(([key, label, badge]) => {
@@ -65,7 +65,7 @@ export default function Suivi() {
               text={segment === 'colis' ? 'Connectez-vous pour suivre vos colis en temps réel.' : 'Connectez-vous pour discuter avec les voyageurs.'}
             />
           ) : segment === 'colis' ? (
-            <PackageTracking />
+            <ReservationsPanel />
           ) : (
             <MessagesList />
           )}

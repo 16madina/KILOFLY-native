@@ -15,7 +15,7 @@ const items: Record<string, { label: string; icon: IconName; iconActive: IconNam
   index: { label: 'Accueil', icon: 'home-outline', iconActive: 'home' },
   search: { label: 'Recherche', icon: 'search-outline', iconActive: 'search' },
   post: { label: 'Annonces', icon: 'add', iconActive: 'add', center: true },
-  tracking: { label: 'Suivi', icon: 'cube-outline', iconActive: 'cube', badge: 1 + unreadCount },
+  tracking: { label: 'Suivi', icon: 'cube-outline', iconActive: 'cube', badge: unreadCount },
   profile: { label: 'Profil', icon: 'person-outline', iconActive: 'person' },
 };
 
