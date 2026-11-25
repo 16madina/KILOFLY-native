@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { Button, Card, T, tap, type IconName } from '@/components/ui';
@@ -69,8 +70,9 @@ function Field({
   value?: string;
   onChange?: (v: string) => void;
 }) {
+  const [focused, setFocused] = useState(false);
   return (
-    <View style={styles.field}>
+    <View style={[styles.field, focused && { borderColor: colors.gold }]}>
       <Ionicons name={icon} size={20} color={colors.text} />
       <T v="small" style={{ fontFamily: fonts.semibold, width: 82 }}>
         {label}
@@ -81,6 +83,8 @@ function Field({
           onChangeText={onChange}
           placeholder={placeholder}
           placeholderTextColor={colors.textMuted}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           style={styles.input}
         />
       ) : (

@@ -200,8 +200,9 @@ function Input({
   right?: React.ReactNode;
   onSubmit?: () => void;
 }) {
+  const [focused, setFocused] = useState(false);
   return (
-    <View style={styles.input}>
+    <View style={[styles.input, focused && { borderColor: colors.gold }]}>
       <Ionicons name={icon} size={20} color={colors.textMuted} />
       <TextInput
         value={value}
@@ -213,6 +214,8 @@ function Input({
         autoCapitalize={autoCapitalize}
         autoCorrect={false}
         onSubmitEditing={onSubmit}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         style={styles.inputText}
       />
       {right}

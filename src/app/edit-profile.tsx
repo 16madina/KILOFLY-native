@@ -186,12 +186,13 @@ function Field({
   autoCapitalize?: 'none' | 'words' | 'sentences';
   multiline?: boolean;
 }) {
+  const [focused, setFocused] = useState(false);
   return (
     <View>
       <T v="caption" color={colors.textMuted} style={{ marginBottom: 6 }}>
         {label}
       </T>
-      <View style={[styles.field, multiline && { height: 100, alignItems: 'flex-start', paddingTop: 14 }]}>
+      <View style={[styles.field, focused && { borderColor: colors.gold }, multiline && { height: 100, alignItems: 'flex-start', paddingTop: 14 }]}>
         <Ionicons name={icon} size={19} color={colors.textMuted} />
         <TextInput
           value={value}
@@ -201,6 +202,8 @@ function Field({
           keyboardType={keyboard}
           autoCapitalize={autoCapitalize}
           multiline={multiline}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           style={[styles.input, multiline && { textAlignVertical: 'top', height: 76 }]}
         />
       </View>

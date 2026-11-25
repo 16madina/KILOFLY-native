@@ -16,6 +16,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import '@/global.css';
 import { AuthProvider } from '@/lib/auth';
 import { colors } from '@/theme';
 
