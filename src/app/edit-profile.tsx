@@ -18,7 +18,7 @@ const types: [string, string][] = [
 
 export default function EditProfile() {
   const insets = useSafeAreaInsets();
-  const { session, profile, updateProfile } = useAuth();
+  const { loading: authLoading, session, profile, updateProfile } = useAuth();
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('');
@@ -41,6 +41,7 @@ export default function EditProfile() {
     setAvatar(profile.avatar_url || null);
   }, [profile]);
 
+  if (authLoading) return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
   if (!session) return <Redirect href="/auth" />;
 
   const pickAvatar = async () => {

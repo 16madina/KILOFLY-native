@@ -1,51 +1,58 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { EmptyState, ErrorNote, Loading } from '@/components/listing-bits';
 import { SearchCard } from '@/components/search-card';
+import { requireAuth } from '@/components/sign-in-prompt';
 import { TicketCard } from '@/components/ticket-card';
-import { AccentTitle, BrandHeader, Chip, T } from '@/components/ui';
-import { listings } from '@/data/mock';
-import { colors, radius } from '@/theme';
+import { AccentTitle, BrandHeader, Button, Chip, T } from '@/components/ui';
+import { useAuth } from '@/lib/auth';
+import { createRouteAlert, daysBetween, toIsoDay, useListings } from '@/lib/listings';
+import { colors } from '@/theme';
 
-const filters = ['Tous', 'Vérifiés', '10 kg et +', 'Moins cher', 'Vol direct'] as const;
+const filters = ['Tous', 'Cette semaine', 'Vérifiés', '10 kg et +', 'Moins cher'] as const;
 type Filter = (typeof filters)[number];
-
-const norm = (s: string) =>
-  s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .trim();
 
 export default function Search() {
   const insets = useSafeAreaInsets();
+  const { session } = useAuth();
   const params = useLocalSearchParams<{ from?: string; to?: string }>();
   const [from, setFrom] = useState(params.from ?? '');
   const [to, setTo] = useState(params.to ?? '');
   const [query, setQuery] = useState({ from: params.from ?? '', to: params.to ?? '' });
   const [filter, setFilter] = useState<Filter>('Tous');
+  const [alert, setAlert] = useState<'idle' | 'saving' | 'saved' | string>('idle');
 
-  // Arriving from the home search button
+  // Arriving from the home search button or a popular route.
   useEffect(() => {
     setFrom(params.from ?? '');
     setTo(params.to ?? '');
     setQuery({ from: params.from ?? '', to: params.to ?? '' });
+    setAlert('idle');
   }, [params.from, params.to]);
 
+  const listings = useListings({ from: query.from, to: query.to, limit: 100 });
+
   const results = useMemo(() => {
-    let r = listings.filter(
-      (l) =>
-        (!query.from || norm(l.from).includes(norm(query.from))) && (!query.to || norm(l.to).includes(norm(query.to))),
-    );
+    let r = listings.data;
+    const today = toIsoDay(new Date());
+    if (filter === 'Cette semaine') r = r.filter((l) => daysBetween(today, l.departDate) <= 7);
     if (filter === 'Vérifiés') r = r.filter((l) => l.traveler.verified);
-    if (filter === '10 kg et +') r = r.filter((l) => l.availableKg >= 10);
-    if (filter === 'Vol direct') r = r.filter((l) => l.direct);
+    if (filter === '10 kg et +') r = r.filter((l) => l.remainingKg >= 10);
     if (filter === 'Moins cher') r = [...r].sort((a, b) => a.pricePerKg - b.pricePerKg);
     return r;
-  }, [query, filter]);
+  }, [listings.data, filter]);
+
+  const saveAlert = () =>
+    requireAuth(!!session, async () => {
+      setAlert('saving');
+      const r = await createRouteAlert(session!.user.id, query.from, query.to);
+      setAlert(r.error ? r.error : 'saved');
+    });
+
+  const routeLabel = query.from || query.to ? `${query.from || 'Partout'} → ${query.to || 'Partout'}` : '';
 
   return (
     <ScrollView
@@ -61,7 +68,16 @@ export default function Search() {
       </BrandHeader>
 
       <View style={{ paddingHorizontal: 16, marginTop: 22 }}>
-        <SearchCard from={from} to={to} onFrom={setFrom} onTo={setTo} onSearch={() => setQuery({ from, to })} />
+        <SearchCard
+          from={from}
+          to={to}
+          onFrom={setFrom}
+          onTo={setTo}
+          onSearch={() => {
+            setQuery({ from, to });
+            setAlert('idle');
+          }}
+        />
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
@@ -71,28 +87,52 @@ export default function Search() {
       </ScrollView>
 
       <View style={{ paddingHorizontal: 16 }}>
-        <T v="small" color={colors.textMuted} style={{ marginBottom: 12 }}>
-          {results.length} voyage{results.length > 1 ? 's' : ''} trouvé{results.length > 1 ? 's' : ''}
-          {query.from || query.to ? ` · ${query.from || 'Partout'} → ${query.to || 'Partout'}` : ''}
-        </T>
-
-        {results.length > 0 ? (
-          <View style={{ gap: 14 }}>
-            {results.map((l) => (
-              <TicketCard key={l.id} listing={l} />
-            ))}
-          </View>
+        {listings.loading && listings.data.length === 0 ? (
+          <Loading />
+        ) : listings.error ? (
+          <ErrorNote text={listings.error} onRetry={listings.reload} />
         ) : (
-          <View style={styles.empty}>
-            <Ionicons name="airplane-outline" size={34} color={colors.gold} />
-            <T v="h2" style={{ textAlign: 'center' }}>
-              Aucun voyage pour l’instant
+          <>
+            <T v="small" color={colors.textMuted} style={{ marginBottom: 12 }}>
+              {results.length} voyage{results.length > 1 ? 's' : ''} trouvé{results.length > 1 ? 's' : ''}
+              {routeLabel ? ` · ${routeLabel}` : ''}
             </T>
-            <T v="small" color={colors.textMuted} style={{ textAlign: 'center' }}>
-              Créez une alerte : on vous prévient dès qu’un voyageur publie ce trajet.
-            </T>
-            <Chip label="Créer une alerte" icon="notifications-outline" active onPress={() => {}} />
-          </View>
+            {results.length > 0 ? (
+              <View style={{ gap: 14 }}>
+                {results.map((l) => (
+                  <TicketCard key={l.id} listing={l} />
+                ))}
+              </View>
+            ) : (
+              <EmptyState
+                icon="notifications-outline"
+                title="Aucun voyage pour l’instant"
+                text={
+                  query.from && query.to
+                    ? `Créez une alerte : on vous prévient dès qu’un voyageur publie ${query.from} → ${query.to}.`
+                    : 'Indiquez un départ et une arrivée pour créer une alerte sur ce trajet.'
+                }
+                action={
+                  query.from && query.to ? (
+                    alert === 'saved' ? (
+                      <T v="small" color={colors.success}>
+                        Alerte créée. Vous serez prévenu(e).
+                      </T>
+                    ) : (
+                      <View style={{ alignItems: 'center', gap: 6 }}>
+                        <Button title="Créer une alerte" small leftIcon="notifications-outline" onPress={saveAlert} />
+                        {alert !== 'idle' && alert !== 'saving' && (
+                          <T v="caption" color={colors.danger}>
+                            {alert}
+                          </T>
+                        )}
+                      </View>
+                    )
+                  ) : undefined
+                }
+              />
+            )}
+          </>
         )}
       </View>
     </ScrollView>
@@ -101,13 +141,4 @@ export default function Search() {
 
 const styles = StyleSheet.create({
   filters: { gap: 8, paddingHorizontal: 16, paddingTop: 18, paddingBottom: 16 },
-  empty: {
-    alignItems: 'center',
-    gap: 10,
-    padding: 24,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-  },
 });

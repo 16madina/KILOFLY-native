@@ -57,6 +57,7 @@ export default function RootLayout() {
           <Stack.Screen name="listing/[id]" />
           <Stack.Screen name="payment" />
           <Stack.Screen name="post-listing" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="post-request" options={{ presentation: 'modal' }} />
           <Stack.Screen name="conversation/[id]" />
           <Stack.Screen name="wallet" />
           <Stack.Screen name="edit-profile" />
