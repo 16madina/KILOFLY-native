@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { useAuth } from '@/lib/auth';
+import { findCity } from '@/lib/cities';
 import { supabase } from '@/lib/supabase';
 
 /* ---------- Types ---------- */
@@ -266,6 +267,14 @@ export function useRequests(mine = false) {
 
 /* ---------- Mutations ---------- */
 
+/** "paris" → "Paris" (known city spelling), otherwise capitalise each word. */
+export function normalizeCity(input: string) {
+  const v = input.trim().replace(/\s+/g, ' ');
+  const known = findCity(v);
+  if (known) return known.city;
+  return v.replace(/(^|[\s-])(\p{L})/gu, (_, sep: string, ch: string) => sep + ch.toUpperCase());
+}
+
 export type NewListing = {
   from: string;
   to: string;
@@ -285,8 +294,8 @@ export async function createListing(userId: string, l: NewListing): Promise<{ id
     .from('listings')
     .insert({
       user_id: userId,
-      departure: l.from.trim(),
-      arrival: l.to.trim(),
+      departure: normalizeCity(l.from),
+      arrival: normalizeCity(l.to),
       departure_date: l.departDate,
       arrival_date: l.arriveDate,
       available_kg: l.kg,
@@ -323,8 +332,8 @@ export async function createRequest(userId: string, r: NewRequest): Promise<{ id
     .from('transport_requests')
     .insert({
       user_id: userId,
-      departure: r.from.trim(),
-      arrival: r.to.trim(),
+      departure: normalizeCity(r.from),
+      arrival: normalizeCity(r.to),
       departure_date_start: r.dateStart,
       departure_date_end: r.dateEnd,
       requested_kg: r.kg,
@@ -356,6 +365,6 @@ export async function setFavorite(userId: string, listingId: string, on: boolean
 }
 
 export async function createRouteAlert(userId: string, from: string, to: string) {
-  const { error } = await supabase.from('route_alerts').insert({ user_id: userId, departure: from.trim(), arrival: to.trim() });
+  const { error } = await supabase.from('route_alerts').insert({ user_id: userId, departure: normalizeCity(from), arrival: normalizeCity(to) });
   return error ? { error: error.message } : {};
 }
