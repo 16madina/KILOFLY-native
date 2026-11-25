@@ -30,7 +30,8 @@ export const art = {
   parcel: require('@/assets/art/card-parcel.png'),
   pro: require('@/assets/art/card-pro.png'),
   box: require('@/assets/art/parcel-box.png'),
-  mark: require('@/assets/brand/logo-mark.png'),
+  mark: require('@/assets/brand/logo-k.png'),
+  wordmark: require('@/assets/brand/wordmark.png'),
 };
 
 /* ---------- Typography ---------- */
@@ -78,8 +79,8 @@ export function Logo({ size = 30, tagline, center }: { size?: number; tagline?: 
   return (
     <View style={{ alignItems: center ? 'center' : 'flex-start' }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-        <Image source={art.mark} style={{ width: size * 1.55, height: size * 1.02 }} contentFit="contain" />
-        <Text style={{ fontFamily: fonts.serifItalic, fontSize: size, color: '#EEE4D2', letterSpacing: 0.2 }}>KiloFly</Text>
+        <Image source={art.mark} style={{ width: size * 1.6, height: size * 1.15 }} contentFit="contain" />
+        <Image source={art.wordmark} style={{ width: size * 1.3 * 3.33, height: size * 1.3 }} contentFit="contain" />
       </View>
       {tagline !== false && (
         <View style={styles.taglineRow}>

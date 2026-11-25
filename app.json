@@ -2,13 +2,15 @@
   "expo": {
     "name": "KiloFly",
     "slug": "kilofly-native",
-    "version": "1.0.0",
+    "version": "2.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "kilofly",
     "userInterfaceStyle": "dark",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/images/icon.png",
+      "bundleIdentifier": "com.kilofly.app",
+      "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
@@ -17,7 +19,9 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.kilofly.app",
+      "versionCode": 6
     },
     "web": {
       "output": "single",
