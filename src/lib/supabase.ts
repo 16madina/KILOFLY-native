@@ -36,6 +36,7 @@ export type Profile = {
   created_at: string;
   id_verified: boolean;
   phone_verified: boolean;
+  email_verified: boolean;
   completed_trips: number;
   response_rate: number;
   preferred_currency: string | null;
@@ -50,7 +51,8 @@ export function authErrorMessage(message: string): string {
   if (m.includes('password should be at least') || m.includes('weak password')) return 'Mot de passe trop court (6 caractères minimum).';
   if (m.includes('unable to validate email') || m.includes('invalid email') || m.includes('email address') && m.includes('invalid'))
     return 'Adresse e-mail invalide.';
-  if (m.includes('rate limit') || m.includes('too many')) return 'Trop de tentatives. Réessayez dans quelques minutes.';
+  if (m.includes('token has expired') || m.includes('otp') && m.includes('invalid') || m.includes('invalid token')) return 'Code incorrect ou expiré.';
+  if (m.includes('rate limit') || m.includes('too many') || m.includes('for security purposes')) return 'Trop de tentatives. Réessayez dans quelques minutes.';
   if (m.includes('network') || m.includes('fetch')) return 'Pas de connexion internet.';
   return message;
 }

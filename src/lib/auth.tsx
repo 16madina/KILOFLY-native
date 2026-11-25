@@ -18,6 +18,10 @@ type AuthState = {
   resetPassword: (email: string) => Promise<Result>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  /** Sends a 6-digit code to the account e-mail. */
+  sendEmailCode: () => Promise<Result>;
+  /** Checks the code and marks the e-mail as verified on the profile. */
+  confirmEmailCode: (code: string) => Promise<Result>;
   updateProfile: (patch: Partial<Pick<Profile, 'full_name' | 'phone' | 'city' | 'country' | 'bio' | 'avatar_url' | 'user_type'>>) => Promise<Result>;
 };
 
@@ -82,6 +86,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async signOut() {
         await supabase.auth.signOut();
         setGuest(false);
+      },
+      async sendEmailCode() {
+        const email = session?.user.email;
+        if (!email) return { error: 'Non connecté.' };
+        const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+        return error ? { error: authErrorMessage(error.message) } : {};
+      },
+      async confirmEmailCode(code) {
+        const email = session?.user.email;
+        if (!email) return { error: 'Non connecté.' };
+        const { error } = await supabase.auth.verifyOtp({ email, token: code.trim(), type: 'email' });
+        if (error) return { error: authErrorMessage(error.message) };
+        const { error: e2 } = await supabase.rpc('mark_email_verified');
+        if (e2) return { error: e2.message };
+        const { data } = await supabase.auth.getSession();
+        await loadProfile(data.session);
+        return {};
       },
       async refreshProfile() {
         await loadProfile(session);

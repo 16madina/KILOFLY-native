@@ -6,6 +6,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { art, Avatar, BrandHeader, Button, Card, Divider, SectionHeader, Stars, T, tap, VerifiedBadge, type IconName } from '@/components/ui';
+import { EmailVerifyCard } from '@/components/email-verify-card';
 import { initialsOf, useAuth } from '@/lib/auth';
 import { memberSince, useMyStats } from '@/lib/use-my-stats';
 import { colors, fonts, radius } from '@/theme';
@@ -99,6 +100,8 @@ export default function Profile() {
             </Pressable>
           </View>
         </Card>
+
+        {profile && !profile.email_verified && <EmailVerifyCard />}
 
         {/* Big counters */}
         <View style={{ flexDirection: 'row', gap: 12 }}>
