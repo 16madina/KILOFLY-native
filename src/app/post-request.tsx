@@ -75,7 +75,7 @@ export default function PostRequest() {
           value={dateEnd}
           onChange={setDateEnd}
           minDate={dateStart ?? toIsoDay(new Date())}
-          days={90}
+          days={21}
           allowEmpty
         />
 

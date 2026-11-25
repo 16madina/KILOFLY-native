@@ -150,7 +150,8 @@ export default function PostListing() {
               value={arriveDate}
               onChange={setArriveDate}
               minDate={departDate ?? toIsoDay(new Date())}
-              days={30}
+              days={14}
+              maxMonths={2}
               allowEmpty
             />
           </>

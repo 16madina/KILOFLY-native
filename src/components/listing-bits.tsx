@@ -5,7 +5,8 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View }
 import { Avatar, Card, GoldPill, T, tap, type IconName } from '@/components/ui';
 import { initialsOf } from '@/lib/auth';
 import { searchCities } from '@/lib/cities';
-import { money, shortDate, toIsoDay, type RequestCard } from '@/lib/listings';
+import { CalendarPicker } from '@/components/calendar-picker';
+import { longDate, money, shortDate, toIsoDay, type RequestCard } from '@/lib/listings';
 import { colors, fonts, radius } from '@/theme';
 
 /* ---------- Request card ---------- */
@@ -139,34 +140,50 @@ export function CityField({
   );
 }
 
-/* ---------- Date strip (next N days) ---------- */
+/* ---------- Date strip: quick picks + full calendar ---------- */
 
 const WD = ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'];
 const MO = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc'];
+const isoToDate = (iso: string) => new Date(`${iso}T12:00:00`);
 
 export function DateStrip({
   label,
   value,
   onChange,
   minDate,
-  days = 120,
+  days = 21,
+  maxMonths = 12,
   allowEmpty,
 }: {
   label: string;
   value: string | null;
   onChange: (iso: string | null) => void;
   minDate?: string;
+  /** Number of quick-pick days shown in the strip. */
   days?: number;
+  /** How far ahead the calendar goes. */
+  maxMonths?: number;
   allowEmpty?: boolean;
 }) {
+  const [calendar, setCalendar] = useState(false);
+  const min = minDate ?? toIsoDay(new Date());
+  const max = useMemo(() => {
+    const d = isoToDate(min);
+    d.setMonth(d.getMonth() + maxMonths);
+    return toIsoDay(d);
+  }, [min, maxMonths]);
+
   const list = useMemo(() => {
-    const start = minDate ? new Date(`${minDate}T12:00:00`) : new Date();
-    return Array.from({ length: days }, (_, i) => {
+    const start = isoToDate(min);
+    const out = Array.from({ length: days }, (_, i) => {
       const d = new Date(start);
       d.setDate(start.getDate() + i);
-      return d;
+      return toIsoDay(d);
     });
-  }, [minDate, days]);
+    // A date picked in the calendar beyond the quick range is shown first.
+    if (value && !out.includes(value)) out.unshift(value);
+    return out;
+  }, [min, days, value]);
 
   return (
     <View>
@@ -183,8 +200,14 @@ export function DateStrip({
         )}
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-        {list.map((d) => {
-          const iso = toIsoDay(d);
+        <Pressable onPress={() => (tap(), setCalendar(true))} style={[styles.day, styles.dayCalendar]}>
+          <Ionicons name="calendar" size={20} color={colors.gold} />
+          <T v="caption" color={colors.gold} style={{ textAlign: 'center', marginTop: 2 }}>
+            Autre{'\n'}date
+          </T>
+        </Pressable>
+        {list.map((iso) => {
+          const d = isoToDate(iso);
           const active = iso === value;
           return (
             <Pressable key={iso} onPress={() => (tap(), onChange(iso))} style={[styles.day, active && styles.dayActive]}>
@@ -196,11 +219,26 @@ export function DateStrip({
               </T>
               <T v="caption" color={active ? colors.onGold : colors.textMuted}>
                 {MO[d.getMonth()]}
+                {d.getFullYear() !== new Date().getFullYear() ? ` ${String(d.getFullYear()).slice(2)}` : ''}
               </T>
             </Pressable>
           );
         })}
       </ScrollView>
+      {value && (
+        <T v="caption" color={colors.gold} style={{ marginTop: 6 }}>
+          {longDate(value)}
+        </T>
+      )}
+      <CalendarPicker
+        visible={calendar}
+        title={label}
+        value={value}
+        minDate={min}
+        maxDate={max}
+        onClose={() => setCalendar(false)}
+        onSelect={(iso) => onChange(iso)}
+      />
     </View>
   );
 }
@@ -298,6 +336,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.field,
   },
   dayActive: { backgroundColor: colors.gold, borderColor: colors.gold },
+  dayCalendar: { justifyContent: 'center', borderColor: colors.borderGold, backgroundColor: colors.goldSoft },
   stepper: {
     flexDirection: 'row',
     alignItems: 'center',
