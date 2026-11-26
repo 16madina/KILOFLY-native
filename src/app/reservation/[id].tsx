@@ -14,6 +14,7 @@ import { cancelReservation, respondReservation, useReservation, type Reservation
 import { DeliveryCodeCard, TrackingTimeline } from '@/components/tracking-timeline';
 import { reachedStep, TRAVELER_STEPS, useTracking } from '@/lib/tracking';
 import { startConversation } from '@/lib/messages';
+import { ReviewPrompt } from '@/components/review-card';
 import { colors } from '@/theme';
 
 const STEPS = ['Demande envoyée', 'Acceptée par le voyageur', 'Paiement sécurisé', 'Livré'];
@@ -108,7 +109,7 @@ export default function ReservationDetail() {
           </Card>
 
           {/* Other party */}
-          <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }} onPress={() => router.push({ pathname: '/user/[id]', params: { id: r.other.id } })}>
             <Avatar photo={r.other.avatar ? { uri: r.other.avatar } : undefined} initials={initialsOf(r.other.name)} size={50} />
             <View style={{ flex: 1 }}>
               <T v="caption" color={colors.textMuted}>
@@ -173,6 +174,8 @@ export default function ReservationDetail() {
               </T>
             )}
           </Card>
+
+          {r.status === 'delivered' && <ReviewPrompt reservationId={r.id} otherName={r.other.name.split(' ')[0]} />}
 
           {isBuyer && (r.status === 'in_progress' || r.status === 'delivered') && (
             <DeliveryCodeCard reservationId={r.id} delivered={r.status === 'delivered'} from={r.from} to={r.to} traveler={r.other.name} />

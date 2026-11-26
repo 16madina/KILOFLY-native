@@ -128,7 +128,7 @@ export default function ListingDetail() {
 
         <View style={{ paddingHorizontal: 16, gap: 12, marginTop: 14 }}>
           {/* Traveler */}
-          <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }} onPress={() => router.push({ pathname: '/user/[id]', params: { id: l.userId } })}>
             <Image source={cityImage(l.to)} style={styles.skyline} contentFit="cover" />
             <LinearGradient colors={['#111E2E', 'rgba(17,30,46,0.5)']} start={{ x: 0.35, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
             <Avatar photo={l.traveler.avatar ? { uri: l.traveler.avatar } : undefined} initials={initialsOf(l.traveler.name)} size={78} />

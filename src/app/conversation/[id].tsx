@@ -87,7 +87,9 @@ export default function Chat() {
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <BackButton />
-        <Avatar photo={c?.other_avatar ? { uri: c.other_avatar } : undefined} initials={initialsOf(c?.other_name ?? '?')} size={44} />
+        <Pressable onPress={() => c && router.push({ pathname: '/user/[id]', params: { id: c.other_id } })}>
+          <Avatar photo={c?.other_avatar ? { uri: c.other_avatar } : undefined} initials={initialsOf(c?.other_name ?? '?')} size={44} />
+        </Pressable>
         <View style={{ flex: 1, minWidth: 0 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <T v="h3" numberOfLines={1} style={{ flexShrink: 1 }}>
