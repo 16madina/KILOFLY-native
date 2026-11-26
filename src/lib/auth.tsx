@@ -1,7 +1,9 @@
 import type { Session } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
+import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 import { router } from 'expo-router';
 import { Platform } from 'react-native';
 
@@ -22,6 +24,8 @@ type AuthState = {
   setGuest: (v: boolean) => void;
   signIn: (email: string, password: string) => Promise<Result>;
   signUp: (input: SignUpInput) => Promise<Result>;
+  /** "Continuer avec Google / Apple". */
+  signInWithProvider: (provider: 'google' | 'apple') => Promise<Result & { cancelled?: boolean }>;
   resetPassword: (email: string) => Promise<Result>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -86,6 +90,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async signIn(email, password) {
         const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (error) return { error: authErrorMessage(error.message) };
+        const { data: banned } = await supabase.rpc('my_ban_status');
+        if (banned === true) {
+          await supabase.auth.signOut();
+          return { error: 'Ce compte a été suspendu. Contactez le support KiloFly.' };
+        }
+        return {};
+      },
+      async signInWithProvider(provider) {
+        try {
+          // iPhone: Apple's own sign-in sheet (required by the App Store).
+          if (provider === 'apple' && Platform.OS === 'ios') {
+            const cred = await AppleAuthentication.signInAsync({
+              requestedScopes: [AppleAuthentication.AppleAuthenticationScope.FULL_NAME, AppleAuthentication.AppleAuthenticationScope.EMAIL],
+            });
+            if (!cred.identityToken) return { error: 'Connexion Apple impossible.' };
+            const { error } = await supabase.auth.signInWithIdToken({ provider: 'apple', token: cred.identityToken });
+            if (error) return { error: authErrorMessage(error.message) };
+            const name = [cred.fullName?.givenName, cred.fullName?.familyName].filter(Boolean).join(' ');
+            if (name) await supabase.rpc('set_my_name_if_missing', { p_name: name });
+          } else if (Platform.OS === 'web') {
+            const { error } = await supabase.auth.signInWithOAuth({
+              provider,
+              options: { redirectTo: `${window.location.origin}/` },
+            });
+            return error ? { error: authErrorMessage(error.message) } : {};
+          } else {
+            // Android (and Google on iPhone): secure browser window, then back to the app.
+            const redirectTo = Linking.createURL('auth-callback');
+            const { data, error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo, skipBrowserRedirect: true } });
+            if (error || !data.url) return { error: error ? authErrorMessage(error.message) : 'Connexion impossible.' };
+            const res = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+            if (res.type !== 'success') return { cancelled: true };
+            const params: Record<string, string> = {};
+            for (const part of res.url.split(/[?#]/).slice(1)) for (const [k, v] of new URLSearchParams(part)) params[k] = v;
+            if (params.error_description) return { error: params.error_description };
+            const r = params.code
+              ? await supabase.auth.exchangeCodeForSession(params.code)
+              : await supabase.auth.setSession({ access_token: params.access_token, refresh_token: params.refresh_token });
+            if (r.error) return { error: authErrorMessage(r.error.message) };
+          }
+        } catch (e: any) {
+          if (e?.code === 'ERR_REQUEST_CANCELED') return { cancelled: true };
+          return { error: e?.message ?? 'Connexion impossible.' };
+        }
         const { data: banned } = await supabase.rpc('my_ban_status');
         if (banned === true) {
           await supabase.auth.signOut();

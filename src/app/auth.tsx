@@ -17,7 +17,7 @@ const typeLabels: Record<string, string> = {
 export default function Auth() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ mode?: 'login' | 'signup'; type?: string }>();
-  const { signIn, signUp, resetPassword } = useAuth();
+  const { signIn, signUp, resetPassword, signInWithProvider } = useAuth();
 
   const [mode, setMode] = useState<'login' | 'signup'>(params.mode ?? 'signup');
   const [userType, setUserType] = useState(params.type ?? 'traveler');
@@ -61,6 +61,17 @@ export default function Auth() {
       // New account: land on the profile page.
       router.replace('/(tabs)/profile');
     }
+  };
+
+  const social = async (provider: 'google' | 'apple') => {
+    setError(null);
+    setInfo(null);
+    setBusy(true);
+    const r = await signInWithProvider(provider);
+    setBusy(false);
+    if (r.cancelled) return;
+    if (r.error) return setError(r.error);
+    if (Platform.OS !== 'web') router.replace('/(tabs)');
   };
 
   const forgot = async () => {
@@ -172,6 +183,28 @@ export default function Auth() {
           <Button title={mode === 'signup' ? 'Créer mon compte' : 'Se connecter'} icon="arrow-forward" style={{ marginTop: 22 }} onPress={submit} />
         )}
 
+        {!busy && (
+          <>
+            <View style={styles.orRow}>
+              <View style={styles.orLine} />
+              <T v="caption" color={colors.textMuted}>
+                ou
+              </T>
+              <View style={styles.orLine} />
+            </View>
+            <Pressable onPress={() => social('apple')} style={[styles.social, { backgroundColor: '#FFFFFF' }]}>
+              <Ionicons name="logo-apple" size={20} color="#000000" />
+              <T v="bodyStrong" color="#000000">
+                Continuer avec Apple
+              </T>
+            </Pressable>
+            <Pressable onPress={() => social('google')} style={[styles.social, { backgroundColor: colors.bgRaised, borderWidth: 1, borderColor: colors.border }]}>
+              <Ionicons name="logo-google" size={18} color={colors.text} />
+              <T v="bodyStrong">Continuer avec Google</T>
+            </Pressable>
+          </>
+        )}
+
         <T v="caption" color={colors.textFaint} style={{ textAlign: 'center', marginTop: 28 }}>
           En continuant, vous acceptez nos Conditions d’utilisation et notre Politique de confidentialité.
         </T>
@@ -225,6 +258,9 @@ function Input({
 }
 
 const styles = StyleSheet.create({
+  orRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 22, marginBottom: 4 },
+  orLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  social: { height: 52, borderRadius: radius.pill, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 10 },
   segment: {
     flexDirection: 'row',
     marginTop: 24,

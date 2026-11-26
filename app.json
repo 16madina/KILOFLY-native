@@ -15,7 +15,8 @@
         "UIBackgroundModes": [
           "remote-notification"
         ]
-      }
+      },
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
@@ -54,7 +55,8 @@
         }
       ],
       "expo-video",
-      "expo-sharing"
+      "expo-sharing",
+      "expo-apple-authentication"
     ],
     "experiments": {
       "typedRoutes": true,
