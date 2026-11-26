@@ -5,7 +5,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEvent } from 'expo';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Platform, StyleSheet } from 'react-native';
+import { Animated, StyleSheet } from 'react-native';
 
 export const SPLASH_BG = '#1F242C';
 const MAX_MS = 4500; // safety net: never block the app longer than this
@@ -57,7 +57,12 @@ export function AnimatedSplash({ ready }: { ready: boolean }) {
   if (done) return null;
   return (
     <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: SPLASH_BG, opacity, zIndex: 1000 }]}>
-      <VideoView player={player} style={StyleSheet.absoluteFill} contentFit={Platform.OS === 'web' ? 'contain' : 'cover'} nativeControls={false} />
+      <VideoView
+        player={player}
+        style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]}
+        contentFit="cover"
+        nativeControls={false}
+      />
     </Animated.View>
   );
 }
