@@ -13,8 +13,10 @@
       "buildNumber": "1",
       "infoPlist": {
         "UIBackgroundModes": [
+          "remote-notification",
           "remote-notification"
-        ]
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       },
       "usesAppleSignIn": true
     },
