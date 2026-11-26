@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
+import { unregisterPush } from '@/lib/push';
 import { authErrorMessage, supabase, type Profile } from '@/lib/supabase';
 
 type SignUpInput = { email: string; password: string; fullName: string; userType: string };
@@ -103,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return error ? { error: authErrorMessage(error.message) } : {};
       },
       async signOut() {
+        await unregisterPush();
         await supabase.auth.signOut();
         setGuest(false);
       },

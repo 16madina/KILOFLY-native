@@ -17,7 +17,8 @@ import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import '@/global.css';
-import { AuthProvider } from '@/lib/auth';
+import { AuthProvider, useAuth } from '@/lib/auth';
+import { usePushNotifications } from '@/lib/push';
 import { colors } from '@/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -49,6 +50,7 @@ export default function RootLayout() {
       <AuthProvider>
       <ThemeProvider value={theme}>
         <StatusBar style="light" />
+        <PushRegistration />
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="welcome" options={{ animation: 'fade' }} />
@@ -70,4 +72,11 @@ export default function RootLayout() {
       </AuthProvider>
     </GestureHandlerRootView>
   );
+}
+
+/** Registers this phone for push notifications once the user is signed in. */
+function PushRegistration() {
+  const { session } = useAuth();
+  usePushNotifications(session?.user.id);
+  return null;
 }

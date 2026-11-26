@@ -125,3 +125,10 @@ export const money = (n: number | null | undefined, currency?: string | null) =>
 
 export const shortDate = (iso: string | null | undefined) =>
   iso ? new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+
+/** Sends a test push to the admin's own phones; returns how many phones are registered. */
+export async function testPush() {
+  const { data, error } = await supabase.rpc('admin_test_push');
+  fail(error);
+  return Number(data ?? 0);
+}

@@ -3,10 +3,10 @@ import { router, type Href } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { AdminScreen, ErrorBox } from '@/components/admin-ui';
+import { AdminScreen, ErrorBox, notify, SmallAction } from '@/components/admin-ui';
 import { Card, T, type IconName } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
-import { getStats, money, recentActions, shortDate, type AdminAction, type AdminStats } from '@/lib/admin';
+import { getStats, money, recentActions, testPush, shortDate, type AdminAction, type AdminStats } from '@/lib/admin';
 import { colors } from '@/theme';
 
 const sections: { icon: IconName; title: string; sub: string; href: Href }[] = [
@@ -101,6 +101,34 @@ export default function AdminDashboard() {
           </Card>
         ))}
       </View>
+
+      <Card style={styles.row}>
+        <View style={styles.rowIcon}>
+          <Ionicons name="notifications-outline" size={22} color={colors.goldBright} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <T v="h3">Notifications push</T>
+          <T v="small" color={colors.textMuted}>
+            Envoie une notification test sur vos téléphones
+          </T>
+        </View>
+        <SmallAction
+          label="Tester"
+          icon="paper-plane-outline"
+          onPress={async () => {
+            try {
+              const n = await testPush();
+              notify(
+                n > 0
+                  ? `Notification envoyée sur ${n} téléphone${n > 1 ? 's' : ''}.`
+                  : "Aucun téléphone enregistré : ouvrez l'app KiloFly sur votre téléphone, connectez-vous et acceptez les notifications.",
+              );
+            } catch (e) {
+              notify((e as Error).message);
+            }
+          }}
+        />
+      </Card>
 
       <T v="label" color={colors.textMuted} style={{ marginTop: 10 }}>
         Dernières actions admin
