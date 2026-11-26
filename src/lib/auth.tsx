@@ -1,6 +1,10 @@
 import type { Session } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
+import * as Linking from 'expo-linking';
+import { router } from 'expo-router';
+import { Platform } from 'react-native';
+
 import { unregisterPush } from '@/lib/push';
 import { authErrorMessage, supabase, type Profile } from '@/lib/supabase';
 
@@ -61,8 +65,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await loadProfile(data.session);
       setLoading(false);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
+      // Opened from the "mot de passe oublié" e-mail: ask for the new password.
+      if (event === 'PASSWORD_RECOVERY') setTimeout(() => router.replace('/reset-password'), 0);
       // Don't await inside the callback (supabase-js recommendation).
       setTimeout(() => loadProfile(s), 0);
     });
@@ -100,7 +106,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { needsConfirmation: !data.session };
       },
       async resetPassword(email) {
-        const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+        // The e-mail link comes back to the app (or the website) on the "new password" screen.
+        const redirectTo =
+          Platform.OS === 'web' && typeof window !== 'undefined'
+            ? `${window.location.origin}/reset-password`
+            : Linking.createURL('reset-password');
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
         return error ? { error: authErrorMessage(error.message) } : {};
       },
       async signOut() {
