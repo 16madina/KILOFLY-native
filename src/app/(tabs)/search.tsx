@@ -170,8 +170,8 @@ export default function Search() {
                 action={
                   query.from && query.to ? (
                     alert === 'saved' ? (
-                      <T v="small" color={colors.success}>
-                        Alerte créée. Vous serez prévenu(e).
+                      <T v="small" color={colors.success} onPress={() => router.push('/alerts')}>
+                        Alerte créée. Vous serez prévenu(e). Gérer mes alertes ›
                       </T>
                     ) : (
                       <View style={{ alignItems: 'center', gap: 6 }}>

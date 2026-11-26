@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Redirect, router } from 'expo-router';
-import { useState } from 'react';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -9,6 +9,8 @@ import { Button, Card, Chip, IconButton, T, tap } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
 import {
   createListing,
+  fetchListings,
+  updateListing,
   currencySymbol,
   DELIVERY_OPTIONS,
   ITEM_OPTIONS,
@@ -40,8 +42,31 @@ export default function PostListing() {
   const [error, setError] = useState<string | null>(null);
   const [needsId, setNeedsId] = useState(false);
   const [priceFocused, setPriceFocused] = useState(false);
+  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const [loadingEdit, setLoadingEdit] = useState(!!edit);
 
-  if (authLoading) return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
+  // Edit mode: prefill from the existing trip.
+  useEffect(() => {
+    if (!edit) return;
+    fetchListings({ id: edit, limit: 1 }).then(([l]) => {
+      if (l) {
+        setFrom(l.from);
+        setTo(l.to);
+        setDepartDate(l.departDate);
+        setArriveDate(l.arriveDate);
+        setKg(l.totalKg);
+        setPrice(String(l.pricePerKg));
+        setCurrency(l.currency);
+        setAllowed(l.allowed ?? []);
+        setProhibited(l.prohibited ?? []);
+        setDelivery(l.deliveryOption || 'pickup');
+        setDescription(l.description ?? '');
+      }
+      setLoadingEdit(false);
+    });
+  }, [edit]);
+
+  if (authLoading || loadingEdit) return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
   if (!session) return <Redirect href="/auth" />;
 
   const priceNum = Number(price.replace(',', '.'));
@@ -66,6 +91,25 @@ export default function PostListing() {
     if (step < steps.length - 1) return setStep(step + 1);
 
     setBusy(true);
+    const data = {
+      from,
+      to,
+      departDate: departDate!,
+      arriveDate: arriveDate ?? departDate!,
+      kg,
+      pricePerKg: priceNum,
+      currency,
+      allowed,
+      prohibited,
+      deliveryOption: delivery,
+      description,
+    };
+    if (edit) {
+      const u = await updateListing(edit, data);
+      setBusy(false);
+      if (u.error) return setError(u.error);
+      return router.replace(`/listing/${edit}`);
+    }
     const r = await createListing(session.user.id, {
       from,
       to,
@@ -107,7 +151,7 @@ export default function PostListing() {
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <IconButton icon="close" onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/post'))} />
-        <T v="h2">Nouveau trajet</T>
+        <T v="h2">{edit ? 'Modifier le trajet' : 'Nouveau trajet'}</T>
         <View style={{ width: 46 }} />
       </View>
 
@@ -252,7 +296,7 @@ export default function PostListing() {
         ) : (
           <>
             {step > 0 && <Button title="Retour" variant="dark" onPress={() => (setError(null), setStep(step - 1))} style={{ flex: 1 }} />}
-            <Button title={step === steps.length - 1 ? 'Publier le trajet' : 'Continuer'} icon="arrow-forward" onPress={next} style={{ flex: 2 }} />
+            <Button title={step === steps.length - 1 ? (edit ? 'Enregistrer' : 'Publier le trajet') : 'Continuer'} icon="arrow-forward" onPress={next} style={{ flex: 2 }} />
           </>
         )}
       </View>

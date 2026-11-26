@@ -5,7 +5,7 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollVie
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState, Loading } from '@/components/listing-bits';
-import { Avatar, BackButton, BrandHeader, Button, Card, Divider, GoldPill, T, tap, VerifiedBadge } from '@/components/ui';
+import { Avatar, BackButton, BrandHeader, Button, Card, Divider, GoldPill, T, tap, VerifiedBadge , IconButton } from '@/components/ui';
 import { initialsOf, useAuth } from '@/lib/auth';
 import { cityCode } from '@/lib/cities';
 import { currencySymbol, fetchListings, money, shortDate, type ListingCard } from '@/lib/listings';
@@ -111,7 +111,12 @@ export default function RequestScreen() {
         <BrandHeader top={insets.top} art={false}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 24 }}>
             <BackButton />
-            <T v="title">{isOwner ? 'Ma demande' : 'Demande d’envoi'}</T>
+            <T v="title" style={{ flex: 1 }}>
+              {isOwner ? 'Ma demande' : 'Demande d’envoi'}
+            </T>
+            {isOwner && (req.status === 'active' || req.status === 'cancelled') && (
+              <IconButton icon="create-outline" size={40} onPress={() => router.push({ pathname: '/post-request', params: { edit: req.id } })} />
+            )}
           </View>
         </BrandHeader>
 

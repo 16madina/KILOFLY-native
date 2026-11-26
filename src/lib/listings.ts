@@ -347,14 +347,58 @@ export async function createRequest(userId: string, r: NewRequest): Promise<{ id
   return { id: data.id };
 }
 
+const EDIT_ERRORS: [string, string][] = [
+  ['locked by reservations', 'Ce trajet a déjà des réservations : le trajet, la date et le prix ne peuvent plus changer. Vous pouvez modifier les kilos, les objets et la description.'],
+  ['below booked kg', 'Vous ne pouvez pas descendre sous les kilos déjà réservés.'],
+  ['active reservations', 'Ce trajet a des réservations en cours. Annulez-les d’abord depuis Suivi.'],
+  ['suspended by admin', 'Cette annonce a été suspendue par l’équipe KiloFly. Contactez le support.'],
+  ['date in the past', 'La date est déjà passée.'],
+  ['invalid dates', 'Les dates ne sont pas cohérentes.'],
+  ['locked', 'Cette demande ne peut plus être modifiée.'],
+];
+const editError = (m: string) => EDIT_ERRORS.find(([k]) => m.includes(k))?.[1] ?? m;
+
 export async function setListingStatus(id: string, status: 'active' | 'cancelled') {
-  const { error } = await supabase.from('listings').update({ status, updated_at: new Date().toISOString() }).eq('id', id);
-  return error ? { error: error.message } : {};
+  const { error } = await supabase.rpc('set_my_listing_status', { p_listing_id: id, p_status: status });
+  return error ? { error: editError(error.message) } : {};
 }
 
 export async function setRequestStatus(id: string, status: 'active' | 'cancelled') {
-  const { error } = await supabase.from('transport_requests').update({ status, updated_at: new Date().toISOString() }).eq('id', id);
-  return error ? { error: error.message } : {};
+  const { error } = await supabase.rpc('set_my_request_status', { p_request_id: id, p_status: status });
+  return error ? { error: editError(error.message) } : {};
+}
+
+export async function updateListing(id: string, l: NewListing): Promise<{ error?: string }> {
+  const { error } = await supabase.rpc('update_listing', {
+    p_listing_id: id,
+    p_departure: normalizeCity(l.from),
+    p_arrival: normalizeCity(l.to),
+    p_departure_date: l.departDate,
+    p_arrival_date: l.arriveDate,
+    p_available_kg: l.kg,
+    p_price_per_kg: l.pricePerKg,
+    p_currency: l.currency,
+    p_allowed: l.allowed,
+    p_prohibited: l.prohibited,
+    p_delivery_option: l.deliveryOption,
+    p_description: l.description,
+  });
+  return error ? { error: editError(error.message) } : {};
+}
+
+export async function updateRequest(id: string, r: NewRequest): Promise<{ error?: string }> {
+  const { error } = await supabase.rpc('update_request', {
+    p_request_id: id,
+    p_departure: normalizeCity(r.from),
+    p_arrival: normalizeCity(r.to),
+    p_date_start: r.dateStart,
+    p_date_end: r.dateEnd,
+    p_requested_kg: r.kg,
+    p_budget_max: r.budgetMax,
+    p_currency: r.currency,
+    p_description: r.description,
+  });
+  return error ? { error: editError(error.message) } : {};
 }
 
 export async function setFavorite(userId: string, listingId: string, on: boolean) {

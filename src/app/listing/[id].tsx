@@ -327,7 +327,10 @@ export default function ListingDetail() {
           <ActivityIndicator color={colors.gold} style={{ height: 56 }} />
         ) : isMine ? (
           l.status === 'active' ? (
-            <Button title="Annuler mon annonce" variant="outline" leftIcon="close-circle-outline" onPress={() => changeStatus('cancelled')} />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <Button title="Modifier" leftIcon="create-outline" onPress={() => router.push({ pathname: '/post-listing', params: { edit: l.id } })} style={{ flex: 1 }} />
+              <Button title="Annuler" variant="outline" leftIcon="close-circle-outline" onPress={() => changeStatus('cancelled')} style={{ flex: 1 }} />
+            </View>
           ) : (
             <Button title="Réactiver mon annonce" leftIcon="refresh" onPress={() => changeStatus('active')} />
           )

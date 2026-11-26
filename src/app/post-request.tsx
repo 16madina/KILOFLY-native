@@ -1,12 +1,13 @@
-import { Redirect, router } from 'expo-router';
-import { useState } from 'react';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CityField, DateStrip, Segmented, Stepper } from '@/components/listing-bits';
 import { Button, IconButton, T } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
-import { createRequest, currencySymbol, toIsoDay, type Currency } from '@/lib/listings';
+import { createRequest, currencySymbol, toIsoDay, updateRequest, type Currency } from '@/lib/listings';
+import { fetchRequest } from '@/lib/offers';
 import { colors, fonts, radius } from '@/theme';
 
 /** "J'envoie un colis": a shipping request travelers can answer. */
@@ -24,8 +25,27 @@ export default function PostRequest() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [focus, setFocus] = useState<string | null>(null);
+  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const [loadingEdit, setLoadingEdit] = useState(!!edit);
 
-  if (authLoading) return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
+  useEffect(() => {
+    if (!edit) return;
+    fetchRequest(edit).then((q) => {
+      if (q) {
+        setFrom(q.from);
+        setTo(q.to);
+        setDateStart(q.dateStart);
+        setDateEnd(q.dateEnd);
+        setKg(q.kg);
+        setBudget(q.budgetMax ? String(q.budgetMax) : '');
+        setCurrency(q.currency);
+        setDescription(q.description ?? '');
+      }
+      setLoadingEdit(false);
+    });
+  }, [edit]);
+
+  if (authLoading || loadingEdit) return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
   if (!session) return <Redirect href="/auth" />;
 
   const submit = async () => {
@@ -38,6 +58,12 @@ export default function PostRequest() {
     if (budget && !(budgetNum! > 0)) return setError('Budget invalide.');
 
     setBusy(true);
+    if (edit) {
+      const u = await updateRequest(edit, { from, to, dateStart, dateEnd, kg, budgetMax: budgetNum, currency, description });
+      setBusy(false);
+      if (u.error) return setError(u.error);
+      return router.replace({ pathname: '/request/[id]', params: { id: edit } });
+    }
     const r = await createRequest(session.user.id, {
       from,
       to,
@@ -57,7 +83,7 @@ export default function PostRequest() {
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <IconButton icon="close" onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/post'))} />
-        <T v="h2">Envoyer un colis</T>
+        <T v="h2">{edit ? 'Modifier la demande' : 'Envoyer un colis'}</T>
         <View style={{ width: 46 }} />
       </View>
 
@@ -129,7 +155,7 @@ export default function PostRequest() {
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-        {busy ? <ActivityIndicator color={colors.gold} style={{ height: 56 }} /> : <Button title="Publier ma demande" icon="arrow-forward" onPress={submit} />}
+        {busy ? <ActivityIndicator color={colors.gold} style={{ height: 56 }} /> : <Button title={edit ? 'Enregistrer' : 'Publier ma demande'} icon="arrow-forward" onPress={submit} />}
       </View>
     </KeyboardAvoidingView>
   );

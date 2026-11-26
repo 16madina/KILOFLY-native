@@ -141,6 +141,10 @@ export default function Settings() {
           )}
         </Card>
 
+        <Card style={{ paddingVertical: 4 }}>
+          <LinkRow icon="notifications-circle-outline" label="Mes alertes de trajet" sub="Être prévenu des nouveaux voyages sur mes routes" onPress={() => router.push('/alerts')} first />
+        </Card>
+
         <Section title="Devise préférée" />
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {currencies.map(([code, label]) => (
