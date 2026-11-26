@@ -41,7 +41,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#030F1E",
+          "backgroundColor": "#1F242C",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
@@ -52,7 +52,8 @@
           "color": "#E4BC83",
           "defaultChannel": "default"
         }
-      ]
+      ],
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true,

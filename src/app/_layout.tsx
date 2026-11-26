@@ -13,10 +13,10 @@ import {
 import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import '@/global.css';
+import { AnimatedSplash } from '@/components/animated-splash';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { usePushNotifications } from '@/lib/push';
 import { colors } from '@/theme';
@@ -39,11 +39,8 @@ export default function RootLayout() {
     PlayfairDisplay_700Bold,
   });
 
-  useEffect(() => {
-    if (loaded) SplashScreen.hideAsync();
-  }, [loaded]);
-
-  if (!loaded) return null;
+  // The native splash is hidden by <AnimatedSplash> once the intro video is ready.
+  if (!loaded) return <AnimatedSplash ready={false} />;
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -70,6 +67,7 @@ export default function RootLayout() {
         </Stack>
       </ThemeProvider>
       </AuthProvider>
+      <AnimatedSplash ready />
     </GestureHandlerRootView>
   );
 }
