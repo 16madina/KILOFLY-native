@@ -98,6 +98,7 @@ export const STATUS_LABEL: Record<ReservationStatus, { buyer: string; seller: st
 export function reservationError(message: string): string {
   const m = message.toLowerCase();
   if (m.includes('not enough kg')) return 'Il ne reste plus assez de kilos sur ce trajet.';
+  if (m.includes('contract not signed')) return 'Signez d’abord votre engagement.';
   if (m.includes('already open')) return 'Vous avez déjà une réservation en cours sur ce trajet.';
   if (m.includes('own listing')) return 'Vous ne pouvez pas réserver votre propre trajet.';
   if (m.includes('listing unavailable')) return 'Ce trajet n’est plus disponible.';

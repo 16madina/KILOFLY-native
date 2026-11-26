@@ -15,6 +15,7 @@ import { DeliveryCodeCard, TrackingTimeline } from '@/components/tracking-timeli
 import { reachedStep, TRAVELER_STEPS, useTracking } from '@/lib/tracking';
 import { startConversation } from '@/lib/messages';
 import { ReviewPrompt } from '@/components/review-card';
+import { ContractsCard } from '@/components/contracts-card';
 import { colors } from '@/theme';
 
 const STEPS = ['Demande envoyée', 'Acceptée par le voyageur', 'Paiement sécurisé', 'Livré'];
@@ -175,6 +176,8 @@ export default function ReservationDetail() {
             )}
           </Card>
 
+          <ContractsCard reservationId={r.id} />
+
           {r.status === 'delivered' && <ReviewPrompt reservationId={r.id} otherName={r.other.name.split(' ')[0]} />}
 
           {isBuyer && (r.status === 'in_progress' || r.status === 'delivered') && (
@@ -215,14 +218,14 @@ export default function ReservationDetail() {
         ) : !isBuyer && r.status === 'pending' ? (
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <Button title="Refuser" variant="dark" onPress={() => act(() => respondReservation(r.id, false))} style={{ flex: 1 }} />
-            <Button title="Accepter" icon="checkmark" onPress={() => act(() => respondReservation(r.id, true))} style={{ flex: 1.4 }} />
+            <Button title="Accepter" icon="checkmark" onPress={() => router.push({ pathname: '/contract/[id]', params: { id: r.id, type: 'transporter', next: 'accept' } })} style={{ flex: 1.4 }} />
           </View>
         ) : isBuyer && r.status === 'approved' ? (
           <View style={{ gap: 8 }}>
             <Button
               title={`Payer ${money(r.buyerTotal, r.currency)}`}
               leftIcon="lock-closed"
-              onPress={() => router.push({ pathname: '/payment', params: { reservation: r.id } })}
+              onPress={() => router.push({ pathname: '/contract/[id]', params: { id: r.id, type: 'sender', next: 'pay' } })}
             />
             <Button title="Annuler la réservation" small variant="dark" onPress={() => act(() => cancelReservation(r.id))} />
           </View>
@@ -237,7 +240,7 @@ export default function ReservationDetail() {
           <Button
             title={TRAVELER_STEPS[reachedStep(tracking.events)]?.action ?? 'Mettre à jour le suivi'}
             leftIcon="navigate"
-            onPress={() => router.push({ pathname: '/tracking-update/[id]', params: { id: r.id } })}
+            onPress={() => router.push({ pathname: '/contract/[id]', params: { id: r.id, type: 'transporter', next: 'track' } })}
           />
         ) : r.status === 'in_progress' ? (
           <T v="small" color={colors.success} style={{ textAlign: 'center' }}>

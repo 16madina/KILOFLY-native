@@ -129,6 +129,7 @@ const ERRORS: [string, string][] = [
   ['recipient name required', 'Indiquez le nom de la personne qui reçoit le colis.'],
   ['step already done', 'Cette étape est déjà enregistrée.'],
   ['reservation not in progress', 'Le suivi démarre une fois la réservation payée.'],
+  ['contract not signed', 'Signez d’abord votre engagement de voyageur (depuis la réservation).'],
 ];
 
 export async function advanceTracking(input: {
