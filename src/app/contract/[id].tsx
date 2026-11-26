@@ -9,6 +9,8 @@ import { SignaturePad } from '@/components/signature-pad';
 import { BackButton, BrandHeader, Button, Card, T } from '@/components/ui';
 import { getContracts, getTerms, signContract, type ContractType, type Terms } from '@/lib/contract';
 import { respondReservation } from '@/lib/reservations';
+import { confirm, notify } from '@/components/admin-ui';
+import { emailDocument } from '@/lib/documents';
 import { colors } from '@/theme';
 
 type Next = 'accept' | 'pay' | 'track';
@@ -58,6 +60,10 @@ export default function ContractScreen() {
     if (r.error) {
       setBusy(false);
       return setError(r.error);
+    }
+    if (await confirm('Recevoir une copie ?', 'Voulez-vous recevoir votre engagement signé (PDF) par courriel ? Il reste aussi disponible sur la réservation.')) {
+      const m = await emailDocument('contract', id!, type);
+      notify(m.error ?? `Envoyé à ${m.email}.`);
     }
     await proceed();
     setBusy(false);

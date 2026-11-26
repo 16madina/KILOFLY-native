@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState, Loading } from '@/components/listing-bits';
@@ -16,6 +16,7 @@ import { reachedStep, TRAVELER_STEPS, useTracking } from '@/lib/tracking';
 import { startConversation } from '@/lib/messages';
 import { ReviewPrompt } from '@/components/review-card';
 import { ContractsCard } from '@/components/contracts-card';
+import { shareDocument } from '@/lib/documents';
 import { colors } from '@/theme';
 
 const STEPS = ['Demande envoyée', 'Acceptée par le voyageur', 'Paiement sécurisé', 'Livré'];
@@ -173,6 +174,19 @@ export default function ReservationDetail() {
               <T v="caption" color={colors.textMuted} style={{ marginTop: 6 }}>
                 Crédité sur votre portefeuille après la livraison.
               </T>
+            )}
+            {(r.status === 'in_progress' || r.status === 'delivered') && (
+              <Pressable
+                onPress={async () => {
+                  const res = await shareDocument('invoice', r.id);
+                  if (res.error) setError(res.error);
+                }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 }}>
+                <Ionicons name="document-text-outline" size={16} color={colors.gold} />
+                <T v="small" color={colors.gold}>
+                  {isBuyer ? 'Télécharger le reçu (PDF)' : 'Télécharger le relevé (PDF)'}
+                </T>
+              </Pressable>
             )}
           </Card>
 

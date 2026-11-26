@@ -4,8 +4,10 @@ import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 
-import { Card, T } from '@/components/ui';
+import { Button, Card, T } from '@/components/ui';
 import { getContracts, type SignedContract } from '@/lib/contract';
+import { notify } from '@/components/admin-ui';
+import { emailDocument, shareDocument } from '@/lib/documents';
 import { colors } from '@/theme';
 
 const when = (iso: string) => new Date(iso).toLocaleString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -57,6 +59,31 @@ export function ContractsCard({ reservationId }: { reservationId: string }) {
             <T v="caption" color={colors.textFaint}>
               {open?.signer_name} · {open && when(open.signed_at)} · version {open?.terms.version}
             </T>
+            {open && (
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                <Button
+                  title="PDF"
+                  small
+                  leftIcon="download-outline"
+                  style={{ flex: 1 }}
+                  onPress={async () => {
+                    const r = await shareDocument('contract', reservationId, open.signature_type);
+                    if (r.error) notify(r.error);
+                  }}
+                />
+                <Button
+                  title="Par courriel"
+                  small
+                  variant="outline"
+                  leftIcon="mail-outline"
+                  style={{ flex: 1 }}
+                  onPress={async () => {
+                    const r = await emailDocument('contract', reservationId, open.signature_type);
+                    notify(r.error ?? `Envoyé à ${r.email}.`);
+                  }}
+                />
+              </View>
+            )}
           </ScrollView>
         </View>
       </Modal>

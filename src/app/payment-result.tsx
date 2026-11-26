@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
+import { emailDocument, shareDocument } from '@/lib/documents';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -74,6 +75,7 @@ export default function PaymentResult() {
           <T v="body" color={colors.textMuted} style={{ textAlign: 'center', marginTop: 8, maxWidth: 300 }}>
             Le voyageur a été prévenu. Convenez ensemble du lieu de remise du colis. L’argent reste bloqué jusqu’à la livraison.
           </T>
+          {!!reservation && <ReceiptActions reservationId={reservation} />}
         </>
       )}
 
@@ -143,3 +145,39 @@ const styles = StyleSheet.create({
     borderColor: colors.bg,
   },
 });
+
+function ReceiptActions({ reservationId }: { reservationId: string }) {
+  const [sent, setSent] = useState<string | null>(null);
+  return (
+    <View style={{ gap: 8, marginTop: 18, alignSelf: 'stretch' }}>
+      <T v="small" color={colors.textMuted} style={{ textAlign: 'center' }}>
+        {sent ?? 'Voulez-vous recevoir le reçu par courriel ?'}
+      </T>
+      {!sent && (
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <Button
+            title="Oui, l’envoyer"
+            small
+            leftIcon="mail-outline"
+            style={{ flex: 1 }}
+            onPress={async () => {
+              const r = await emailDocument('invoice', reservationId);
+              setSent(r.error ?? `Reçu envoyé à ${r.email}.`);
+            }}
+          />
+          <Button
+            title="PDF"
+            small
+            variant="outline"
+            leftIcon="download-outline"
+            style={{ flex: 1 }}
+            onPress={async () => {
+              const r = await shareDocument('invoice', reservationId);
+              if (r.error) setSent(r.error);
+            }}
+          />
+        </View>
+      )}
+    </View>
+  );
+}
