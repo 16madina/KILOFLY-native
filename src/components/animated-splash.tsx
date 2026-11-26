@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet } from 'react-native';
 
 export const SPLASH_BG = '#1F242C';
-const MAX_MS = 4500; // safety net: never block the app longer than this
+const MAX_MS = 5000; // safety net: never block the app longer than this
 
 export function AnimatedSplash({ ready }: { ready: boolean }) {
   const [done, setDone] = useState(false);
