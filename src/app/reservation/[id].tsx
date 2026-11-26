@@ -163,7 +163,7 @@ export default function ReservationDetail() {
           </Card>
 
           {isBuyer && (r.status === 'in_progress' || r.status === 'delivered') && (
-            <DeliveryCodeCard reservationId={r.id} delivered={r.status === 'delivered'} />
+            <DeliveryCodeCard reservationId={r.id} delivered={r.status === 'delivered'} from={r.from} to={r.to} traveler={r.other.name} />
           )}
 
           {/* Steps */}

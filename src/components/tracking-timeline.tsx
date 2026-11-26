@@ -2,10 +2,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, StyleSheet, View } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
+import { ActivityIndicator, Modal, Pressable, Share, StyleSheet, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 
-import { Card, T } from '@/components/ui';
+import { Button, Card, T } from '@/components/ui';
 import { eventLabel, getDeliveryCode, photoUrl, reachedStep, signatureSvg, timeline, TRAVELER_STEPS, type TrackingEvent } from '@/lib/tracking';
 import { colors, fonts } from '@/theme';
 
@@ -92,8 +93,41 @@ function Proof({ event }: { event: TrackingEvent }) {
 }
 
 /** Sender side: the code to give to whoever receives the parcel. */
-export function DeliveryCodeCard({ reservationId, delivered }: { reservationId: string; delivered: boolean }) {
+export function DeliveryCodeCard({
+  reservationId,
+  delivered,
+  from,
+  to,
+  traveler,
+}: {
+  reservationId: string;
+  delivered: boolean;
+  from?: string;
+  to?: string;
+  traveler?: string;
+}) {
   const [code, setCode] = useState<string | null | undefined>(undefined);
+  const [copied, setCopied] = useState(false);
+
+  const message = (c: string) =>
+    `📦 KiloFly : ton colis${from && to ? ` ${from} → ${to}` : ''} arrive${traveler ? ` avec ${traveler}` : ''}.\n\n` +
+    `Code de livraison : ${c}\n\n` +
+    `Donne ce code au voyageur seulement quand tu as le colis entre les mains et que tout est en ordre. Ne le donne à personne d'autre.`;
+
+  const share = async () => {
+    if (!code) return;
+    try {
+      await Share.share({ message: message(code) });
+    } catch {
+      // closed
+    }
+  };
+  const copy = async () => {
+    if (!code) return;
+    await Clipboard.setStringAsync(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
   useEffect(() => {
     getDeliveryCode(reservationId).then(setCode);
   }, [reservationId]);
@@ -115,6 +149,12 @@ export function DeliveryCodeCard({ reservationId, delivered }: { reservationId: 
           ? 'Ce code a servi à confirmer la livraison.'
           : 'Donnez ce code à la personne qui recevra le colis. Le voyageur le lui demandera à la remise : sans ce code, il ne peut pas valider la livraison.'}
       </T>
+      {!delivered && !!code && (
+        <View style={{ flexDirection: 'row', gap: 10, alignSelf: 'stretch', marginTop: 6 }}>
+          <Button title="Envoyer" small leftIcon="share-social-outline" onPress={share} style={{ flex: 1.3 }} />
+          <Button title={copied ? 'Copié ✓' : 'Copier'} small variant="outline" leftIcon="copy-outline" onPress={copy} style={{ flex: 1 }} />
+        </View>
+      )}
     </Card>
   );
 }
