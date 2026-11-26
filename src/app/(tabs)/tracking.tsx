@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { MessagesList, unreadCount } from '@/components/messages-list';
+import { MessagesList } from '@/components/messages-list';
+import { useUnreadMessages } from '@/lib/messages';
 import { ReservationsPanel } from '@/components/reservations-panel';
 import { SignInPrompt } from '@/components/sign-in-prompt';
 import { AccentTitle, BrandHeader, T, tap } from '@/components/ui';
@@ -18,6 +19,7 @@ export default function Suivi() {
   const params = useLocalSearchParams<{ tab?: Segment }>();
   const { session } = useAuth();
   const [segment, setSegment] = useState<Segment>(params.tab ?? 'colis');
+  const unreadCount = useUnreadMessages();
 
   useEffect(() => {
     if (params.tab) setSegment(params.tab);

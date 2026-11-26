@@ -30,6 +30,7 @@ import { cityCode, cityImage, countryOf } from '@/lib/cities';
 import { daysBetween, DELIVERY_OPTIONS, longDate, money, setFavorite, setListingStatus, shortDate, useListing } from '@/lib/listings';
 import { memberSince } from '@/lib/use-my-stats';
 import { useApprox } from '@/lib/currency';
+import { startConversation } from '@/lib/messages';
 import { colors, fonts, radius } from '@/theme';
 
 const ICONS: [RegExp, IconName][] = [
@@ -322,7 +323,13 @@ export default function ListingDetail() {
               title="Contacter"
               variant="dark"
               leftIcon="chatbubble-outline"
-              onPress={() => requireAuth(!!session, () => setNote(`La messagerie avec ${first} arrive à l’étape 4 du plan.`))}
+              onPress={() =>
+                requireAuth(!!session, async () => {
+                  const r = await startConversation(l.id);
+                  if (r.id) router.push({ pathname: '/conversation/[id]', params: { id: r.id } });
+                  else setNote(r.error ?? 'Impossible d’ouvrir la discussion.');
+                })
+              }
               style={{ flex: 1 }}
             />
             {l.status === 'active' && l.remainingKg > 0 ? (

@@ -6,3 +6,4 @@ delete from public.listings where id = '00000000-0000-4000-a000-00000000d0a1';
 delete from public.notifications where user_id = '00000000-0000-4000-a000-00000000d001'
    or message ilike '%(démo)%';
 delete from auth.users where id = '00000000-0000-4000-a000-00000000d001';
+delete from public.conversations where id = '00000000-0000-4000-a000-00000000dc01';

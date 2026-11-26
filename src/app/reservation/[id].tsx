@@ -13,6 +13,7 @@ import { longDate, money } from '@/lib/listings';
 import { cancelReservation, respondReservation, useReservation, type Reservation } from '@/lib/reservations';
 import { DeliveryCodeCard, TrackingTimeline } from '@/components/tracking-timeline';
 import { reachedStep, TRAVELER_STEPS, useTracking } from '@/lib/tracking';
+import { startConversation } from '@/lib/messages';
 import { colors } from '@/theme';
 
 const STEPS = ['Demande envoyée', 'Acceptée par le voyageur', 'Paiement sécurisé', 'Livré'];
@@ -120,6 +121,17 @@ export default function ReservationDetail() {
                 {r.other.verified && <VerifiedBadge size={16} />}
               </View>
             </View>
+            <Button
+              title="Écrire"
+              small
+              variant="outline"
+              leftIcon="chatbubble-outline"
+              onPress={async () => {
+                const res = await startConversation(r.listingId, isBuyer ? undefined : r.other.id);
+                if (res.id) router.push({ pathname: '/conversation/[id]', params: { id: res.id } });
+                else setError(res.error ?? 'Impossible d’ouvrir la discussion.');
+              }}
+            />
           </Card>
 
           {/* Parcel */}

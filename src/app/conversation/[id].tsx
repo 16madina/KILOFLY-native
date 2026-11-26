@@ -1,325 +1,230 @@
+// Real-time chat between a sender and a traveler, about one trip.
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useRef, useState, type ComponentRef } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import {
-  art,
-  Avatar,
-  BackButton,
-  Chip,
-  Divider,
-  IconButton,
-  Logo,
-  T,
-  tap,
-  VerifiedBadge,
-  type IconName,
-} from '@/components/ui';
-import { cityCodes, conversations, listings, me, messages as initial, shortName } from '@/data/mock';
+import { confirm, notify } from '@/components/admin-ui';
+import { Avatar, BackButton, T, tap, VerifiedBadge } from '@/components/ui';
+import { initialsOf, useAuth } from '@/lib/auth';
+import { cityCode } from '@/lib/cities';
+import { shortDate } from '@/lib/listings';
+import { blockUser, useChat, useConversations, type Message } from '@/lib/messages';
 import { colors, fonts, radius } from '@/theme';
 
-export default function Conversation() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const c = conversations.find((x) => x.id === id) ?? conversations[0];
-  const l = listings.find((x) => x.traveler.id === c.travelerId) ?? listings[0];
-  const t = l.traveler;
-  const insets = useSafeAreaInsets();
-  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
-  const [msgs, setMsgs] = useState(initial);
-  const [text, setText] = useState('');
-  const kg = 3;
-  const total = kg * l.pricePerKg;
+const time = (iso: string) => new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+const dayLabel = (iso: string) => {
+  const d = new Date(iso);
+  const t = new Date();
+  if (d.toDateString() === t.toDateString()) return 'Aujourd’hui';
+  if (d.toDateString() === new Date(t.getTime() - 864e5).toDateString()) return 'Hier';
+  return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+};
 
-  const send = () => {
+type Row = { kind: 'day'; key: string; label: string } | { kind: 'msg'; key: string; m: Message };
+
+export default function Chat() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const insets = useSafeAreaInsets();
+  const { session, loading } = useAuth();
+  const { items, reload } = useConversations();
+  const c = items?.find((x) => x.id === id);
+  const { messages, send } = useChat(id);
+  const [text, setText] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const list = useRef<FlatList<Row>>(null);
+  const me = session?.user.id;
+
+  const rows = useMemo<Row[]>(() => {
+    const out: Row[] = [];
+    let day = '';
+    for (const m of messages ?? []) {
+      const d = new Date(m.created_at).toDateString();
+      if (d !== day) {
+        day = d;
+        out.push({ kind: 'day', key: `d-${d}`, label: dayLabel(m.created_at) });
+      }
+      out.push({ kind: 'msg', key: m.id, m });
+    }
+    return out;
+  }, [messages]);
+
+  useEffect(() => {
+    if (!loading && !session) router.replace('/auth');
+  }, [loading, session]);
+
+  useEffect(() => {
+    if (rows.length) setTimeout(() => list.current?.scrollToEnd({ animated: true }), 60);
+  }, [rows.length]);
+
+  const onSend = async () => {
     if (!text.trim()) return;
     tap();
-    setMsgs([...msgs, { id: String(Date.now()), mine: true, text: text.trim(), time: 'à l’instant' }]);
+    setError(null);
+    const draft = text;
     setText('');
-    setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 50);
+    const err = await send(draft);
+    if (err) {
+      setError(err);
+      setText(draft);
+    }
+  };
+
+  const menu = async () => {
+    if (!c) return;
+    const ok = await confirm(
+      c.blocked ? 'Débloquer ?' : `Bloquer ${c.other_name ?? 'cet utilisateur'} ?`,
+      c.blocked ? 'Vous pourrez de nouveau échanger des messages.' : 'Vous ne recevrez plus ses messages et cette personne ne pourra plus vous écrire.',
+    );
+    if (!ok) return;
+    const r = await blockUser(c.other_id, !c.blocked);
+    if (r.error) notify(r.error);
+    reload();
   };
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView ref={scroll} contentContainerStyle={{ paddingBottom: 16 }} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={{ paddingTop: insets.top + 10, paddingHorizontal: 16, overflow: 'hidden' }}>
-          <View pointerEvents="none" style={styles.headerArt}>
-            <Image source={art.window} style={{ width: '100%', height: '100%' }} contentFit="cover" contentPosition="left" />
-            <LinearGradient colors={[colors.bg, 'rgba(3,15,30,0.2)', colors.bg]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
-            <LinearGradient colors={['rgba(3,15,30,0)', colors.bg]} start={{ x: 0, y: 0.5 }} end={{ x: 0, y: 1 }} style={StyleSheet.absoluteFill} />
-          </View>
-
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <Logo size={24} tagline="Messagerie · Négociation sécurisée" />
-            <IconButton icon="ellipsis-horizontal" size={40} />
-          </View>
-
-          <View style={styles.person}>
-            <BackButton />
-            <Avatar photo={t.photo} initials={t.initials} size={54} verified={t.verified} />
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <T v="h2" style={{ fontSize: 19, flexShrink: 1 }} numberOfLines={1}>
-                  {shortName(t.name)}
-                </T>
-                {t.verified && <VerifiedBadge size={17} />}
-              </View>
-              <View style={styles.verifiedPill}>
-                <Ionicons name="shield-checkmark-outline" size={12} color={colors.gold} />
-                <T v="caption" color={colors.textMuted}>
-                  Trajet vérifié
-                </T>
-              </View>
-            </View>
-            <IconButton icon="call-outline" size={38} />
-            <IconButton icon="videocam-outline" size={38} />
-          </View>
-
-          <View style={styles.routeLine}>
-            <Ionicons name="airplane" size={16} color={colors.text} />
-            <T v="small">
-              {l.from} ({cityCodes[l.from]}) → {l.to} ({cityCodes[l.to]})
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <BackButton />
+        <Avatar photo={c?.other_avatar ? { uri: c.other_avatar } : undefined} initials={initialsOf(c?.other_name ?? '?')} size={44} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <T v="h3" numberOfLines={1} style={{ flexShrink: 1 }}>
+              {c?.other_name ?? ' '}
             </T>
-            <View style={{ flex: 1 }} />
-            <Ionicons name="calendar-outline" size={15} color={colors.text} />
-            <T v="small">{l.departDate.replace(/^\S+ /, '')}</T>
+            {c?.other_verified && <VerifiedBadge size={15} />}
           </View>
+          {!!c?.departure && (
+            <Pressable onPress={() => router.push({ pathname: '/listing/[id]', params: { id: c.listing_id } })}>
+              <T v="caption" color={colors.gold} numberOfLines={1}>
+                ✈ {c.departure} ({cityCode(c.departure)}) → {c.arrival} ({cityCode(c.arrival)}) · {shortDate(c.departure_date)}
+              </T>
+            </Pressable>
+          )}
         </View>
+        <Pressable onPress={menu} hitSlop={10} style={styles.more}>
+          <Ionicons name="ellipsis-horizontal" size={20} color={colors.text} />
+        </Pressable>
+      </View>
 
-        <View style={{ paddingHorizontal: 14, gap: 12 }}>
-          {/* Shipment under negotiation */}
-          <View style={styles.shipment}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <Image source={art.box} style={{ width: 66, height: 50 }} contentFit="contain" />
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <T v="h2" style={{ fontSize: 18 }} numberOfLines={1}>
-                  Envoi de colis
-                </T>
-                <T v="caption" color={colors.textMuted} numberOfLines={1}>
-                  Proposition en discussion
-                </T>
-              </View>
-              <View style={styles.negPill}>
-                <T v="small" color={colors.goldBright} style={{ fontFamily: fonts.medium }}>
-                  Négociation
-                </T>
-              </View>
-            </View>
-            <Divider style={{ marginVertical: 10 }} />
-            <View style={{ flexDirection: 'row' }}>
-              <Spec icon="airplane" title="Trajet" value={`${cityCodes[l.from]}→${cityCodes[l.to]}`} />
-              <Divider vertical />
-              <Spec icon="calendar-outline" title="Date" value={l.departDate.replace(/^\S+ /, '')} />
-              <Divider vertical />
-              <Spec icon="briefcase-outline" title="Poids" value={`${kg},0 kg`} />
-              <Divider vertical />
-              <Spec icon="cash-outline" title="Prix" value={`${l.pricePerKg} €/kg`} gold />
-            </View>
-          </View>
-
-          <View style={styles.dayRow}>
-            <Divider style={{ flex: 1 }} />
-            <View style={styles.dayPill}>
-              <T v="small">Aujourd’hui</T>
-            </View>
-            <Divider style={{ flex: 1 }} />
-          </View>
-
-          {msgs.map((m) => (
-            <View key={m.id} style={[styles.msgRow, m.mine && { flexDirection: 'row-reverse' }]}>
-              {m.mine ? <Avatar initials={me.initials} size={38} /> : <Avatar photo={t.photo} initials={t.initials} size={38} />}
-              <View style={[styles.bubble, m.mine ? styles.mine : styles.theirs]}>
-                {m.mine && (
-                  <LinearGradient
-                    colors={['rgba(150,128,88,0.55)', 'rgba(70,62,50,0.6)']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={[StyleSheet.absoluteFill, { borderRadius: 16 }]}
-                  />
-                )}
-                <T v="body" style={{ lineHeight: 21 }}>
-                  {m.text}
-                </T>
-                <View style={{ flexDirection: 'row', alignSelf: 'flex-end', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                  <T v="caption" color={colors.textMuted}>
-                    {m.time}
-                  </T>
-                  {m.mine && <Ionicons name="checkmark-done" size={15} color={colors.text} />}
-                </View>
-              </View>
-            </View>
-          ))}
-
-          {/* Accepted offer */}
-          <Pressable
-            style={styles.offer}
-            onPress={() => router.push({ pathname: '/payment', params: { id: l.id, kg: String(kg) } })}>
-            <View style={styles.offerIcon}>
-              <Ionicons name="hand-left-outline" size={22} color={colors.gold} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <T v="h3" style={{ fontFamily: fonts.serif, fontSize: 16 }} numberOfLines={1}>
-                  Offre acceptée
-                </T>
-                <VerifiedBadge size={17} />
-              </View>
-              <T v="caption" color={colors.textMuted}>
-                Envoi de colis · {l.from} → {l.to}
+      {!messages ? (
+        <ActivityIndicator color={colors.gold} style={{ marginTop: 40, flex: 1 }} />
+      ) : (
+        <FlatList
+          ref={list}
+          style={{ flex: 1 }}
+          data={rows}
+          keyExtractor={(r) => r.key}
+          contentContainerStyle={{ padding: 14, gap: 8, flexGrow: 1 }}
+          onContentSizeChange={() => list.current?.scrollToEnd({ animated: false })}
+          keyboardShouldPersistTaps="handled"
+          ListHeaderComponent={
+            <View style={styles.safety}>
+              <Ionicons name="shield-checkmark-outline" size={16} color={colors.gold} />
+              <T v="caption" color={colors.textMuted} style={{ flex: 1 }}>
+                Pour votre sécurité, réservez et payez toujours dans KiloFly. Ne partagez jamais vos codes ni vos coordonnées bancaires.
               </T>
             </View>
-            <View style={styles.offerPrice}>
-              <View style={{ alignItems: 'center' }}>
-                <T v="h2" color={colors.goldBright}>
-                  {total} €
-                </T>
+          }
+          ListEmptyComponent={
+            <T v="small" color={colors.textMuted} style={{ textAlign: 'center', marginTop: 30 }}>
+              Écrivez votre premier message : poids, contenu du colis, lieu de remise…
+            </T>
+          }
+          renderItem={({ item }) =>
+            item.kind === 'day' ? (
+              <View style={styles.day}>
                 <T v="caption" color={colors.textMuted}>
-                  ({kg},0 kg × {l.pricePerKg} €/kg)
+                  {item.label}
                 </T>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.text} />
-            </View>
-          </Pressable>
-        </View>
-      </ScrollView>
+            ) : (
+              <Bubble m={item.m} mine={item.m.sender_id === me} />
+            )
+          }
+        />
+      )}
 
-      {/* Quick actions + composer */}
-      <View style={{ paddingBottom: Math.max(insets.bottom, 12), backgroundColor: colors.bg }}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 14, paddingVertical: 10 }}>
-          {(
-            [
-              ['camera-outline', 'Photos'],
-              ['cube-outline', 'Détails du colis'],
-              ['pricetag-outline', 'Faire une offre'],
-              ['shield-checkmark-outline', 'Payer / Sécuriser'],
-            ] as [IconName, string][]
-          ).map(([icon, label]) => (
-            <Chip
-              key={label}
-              icon={icon}
-              label={label}
-              onPress={label.startsWith('Payer') ? () => router.push({ pathname: '/payment', params: { id: l.id, kg: String(kg) } }) : () => {}}
-            />
-          ))}
-        </ScrollView>
-        <View style={styles.composer}>
-          <View style={styles.inputWrap}>
-            <Ionicons name="attach" size={22} color={colors.text} style={{ transform: [{ rotate: '45deg' }] }} />
-            <View style={{ width: 1, height: 22, backgroundColor: colors.border }} />
+      <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+        {error && (
+          <T v="caption" color={colors.danger} style={{ marginBottom: 6 }}>
+            {error}
+          </T>
+        )}
+        {c?.blocked ? (
+          <T v="small" color={colors.textMuted} style={{ textAlign: 'center', paddingVertical: 10 }}>
+            Cette discussion est bloquée.
+          </T>
+        ) : (
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10 }}>
             <TextInput
               value={text}
               onChangeText={setText}
-              onSubmitEditing={send}
-              placeholder="Écrivez un message…"
-              placeholderTextColor={colors.textMuted}
+              placeholder="Votre message…"
+              placeholderTextColor={colors.textFaint}
+              multiline
+              maxLength={2000}
               style={styles.input}
             />
-            <Ionicons name="happy-outline" size={22} color={colors.text} />
+            <Pressable onPress={onSend} disabled={!text.trim()} style={[styles.send, !text.trim() && { opacity: 0.4 }]}>
+              <Ionicons name="send" size={18} color={colors.onGold} />
+            </Pressable>
           </View>
-          <Pressable onPress={send} style={({ pressed }) => [pressed && { transform: [{ scale: 0.92 }] }]}>
-            <LinearGradient colors={['#F2D29C', '#D9AD6C']} style={styles.send}>
-              <Ionicons name="paper-plane" size={22} color={colors.onGold} />
-            </LinearGradient>
-          </Pressable>
-        </View>
+        )}
       </View>
     </KeyboardAvoidingView>
   );
 }
 
-function Spec({ icon, title, value, gold }: { icon: IconName; title: string; value: string; gold?: boolean }) {
+function Bubble({ m, mine }: { m: Message; mine: boolean }) {
   return (
-    <View style={{ flex: 1, paddingHorizontal: 5, gap: 3 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-        <Ionicons name={icon} size={14} color={colors.text} />
-        <T v="caption">{title}</T>
-      </View>
-      <T
-        v={gold ? 'bodyStrong' : 'caption'}
-        color={gold ? colors.goldBright : colors.text}
-        style={gold ? { fontFamily: fonts.bold } : { fontFamily: fonts.medium }}
-        numberOfLines={1}>
-        {value}
+    <View style={[styles.bubble, mine ? styles.mine : styles.theirs]}>
+      <T v="body" color={mine ? colors.onGold : colors.text} style={{ lineHeight: 21 }}>
+        {m.content}
       </T>
+      <View style={{ flexDirection: 'row', alignSelf: 'flex-end', alignItems: 'center', gap: 4, marginTop: 2 }}>
+        <T v="caption" color={mine ? 'rgba(20,17,11,0.65)' : colors.textFaint} style={{ fontSize: 11 }}>
+          {time(m.created_at)}
+        </T>
+        {mine && <Ionicons name={m.pending ? 'time-outline' : m.read ? 'checkmark-done' : 'checkmark'} size={14} color={m.read ? '#1E6FD9' : 'rgba(20,17,11,0.65)'} />}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  headerArt: { position: 'absolute', right: -30, top: 40, width: 260, height: 190, opacity: 0.85 },
-  verifiedPill: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', marginTop: 2 },
-  person: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 18 },
-  routeLine: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, marginBottom: 14, paddingLeft: 4 },
-  shipment: {
-    padding: 14,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.card,
-  },
-  negPill: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: radius.pill, borderWidth: 1.2, borderColor: colors.gold },
-  dayRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 4 },
-  dayPill: {
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     paddingHorizontal: 14,
-    paddingVertical: 5,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.card,
-  },
-  msgRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  bubble: { maxWidth: '76%', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 16, overflow: 'hidden' },
-  theirs: { backgroundColor: '#1A2B40', borderWidth: 1, borderColor: colors.border },
-  mine: { borderWidth: 1, borderColor: 'rgba(228,188,131,0.6)' },
-  offer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    padding: 12,
-    marginTop: 6,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.card,
-  },
-  offerIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
     backgroundColor: colors.bgRaised,
   },
-  offerPrice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.bgRaised,
-  },
-  composer: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14 },
-  inputWrap: {
+  more: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
+  safety: { flexDirection: 'row', gap: 8, alignItems: 'center', padding: 10, borderRadius: radius.md, backgroundColor: colors.goldSoft, marginBottom: 6 },
+  day: { alignSelf: 'center', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999, backgroundColor: colors.card, marginVertical: 6 },
+  bubble: { maxWidth: '80%', paddingHorizontal: 13, paddingVertical: 8, borderRadius: 18 },
+  mine: { alignSelf: 'flex-end', backgroundColor: colors.gold, borderBottomRightRadius: 6 },
+  theirs: { alignSelf: 'flex-start', backgroundColor: colors.card, borderBottomLeftRadius: 6, borderWidth: 1, borderColor: colors.border },
+  composer: { paddingHorizontal: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.bgRaised },
+  input: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    height: 54,
+    minHeight: 44,
+    maxHeight: 120,
+    borderRadius: 22,
     paddingHorizontal: 16,
-    borderRadius: 27,
+    paddingTop: 12,
+    paddingBottom: 12,
+    backgroundColor: colors.field,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.card,
+    borderColor: colors.border,
+    color: colors.text,
+    fontFamily: fonts.regular,
+    fontSize: 15,
   },
-  input: { flex: 1, fontFamily: fonts.regular, fontSize: 15, color: colors.text, minWidth: 0 },
-  send: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
+  send: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' },
 });

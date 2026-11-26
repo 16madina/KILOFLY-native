@@ -5,7 +5,7 @@ import { Tabs, type BottomTabBarProps } from 'expo-router/js-tabs';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { unreadCount } from '@/components/messages-list';
+import { useUnreadMessages } from '@/lib/messages';
 import { tap, type IconName } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
 import { colors, fonts, gradients, shadow } from '@/theme';
@@ -15,11 +15,12 @@ const items: Record<string, { label: string; icon: IconName; iconActive: IconNam
   index: { label: 'Accueil', icon: 'home-outline', iconActive: 'home' },
   search: { label: 'Recherche', icon: 'search-outline', iconActive: 'search' },
   post: { label: 'Annonces', icon: 'add', iconActive: 'add', center: true },
-  tracking: { label: 'Suivi', icon: 'cube-outline', iconActive: 'cube', badge: unreadCount },
+  tracking: { label: 'Suivi', icon: 'cube-outline', iconActive: 'cube', },
   profile: { label: 'Profil', icon: 'person-outline', iconActive: 'person' },
 };
 
 function TabBar({ state, navigateToTab }: BottomTabBarProps) {
+  const unread = useUnreadMessages();
   const insets = useSafeAreaInsets();
   return (
     <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 14) }]}>
@@ -50,9 +51,9 @@ function TabBar({ state, navigateToTab }: BottomTabBarProps) {
           <Pressable key={route.key} onPress={onPress} style={styles.item}>
             <View>
               <Ionicons name={focused ? item.iconActive : item.icon} size={26} color={tint} />
-              {item.badge ? (
+              {(route.name === 'tracking' ? unread : item.badge) ? (
                 <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{item.badge}</Text>
+                  <Text style={styles.badgeText}>{route.name === 'tracking' ? unread : item.badge}</Text>
                 </View>
               ) : null}
             </View>

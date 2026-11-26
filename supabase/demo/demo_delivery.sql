@@ -57,3 +57,23 @@ end $$;
 select r.id, r.item_description, case when r.buyer_id = p.id then 'Madina expéditrice' else 'Madina voyageuse' end as role
 from public.reservations r, public.profiles p
 where p.full_name ilike 'madina%' and r.id::text like '00000000-0000-4000-a000-00000000d%';
+
+-- Demo conversation with Moussa about trip A.
+do $$
+declare
+  v_me uuid := (select id from public.profiles where full_name ilike 'madina%' order by created_at limit 1);
+  v_moussa uuid := '00000000-0000-4000-a000-00000000d001';
+  v_conv uuid := '00000000-0000-4000-a000-00000000dc01';
+begin
+  insert into public.conversations (id, listing_id, buyer_id, seller_id, created_at, updated_at)
+  values (v_conv, '00000000-0000-4000-a000-00000000d0a1', v_me, v_moussa, now() - interval '3 days', now() - interval '2 hours')
+  on conflict do nothing;
+  if not exists (select 1 from public.messages where conversation_id = v_conv) then
+    insert into public.messages (conversation_id, sender_id, content, read, created_at) values
+      (v_conv, v_me, 'Bonjour Moussa, il vous reste de la place pour 3 kg vers Dakar ?', true, now() - interval '3 days'),
+      (v_conv, v_moussa, 'Bonjour ! Oui sans problème. C''est quoi comme colis ?', true, now() - interval '3 days' + interval '20 minutes'),
+      (v_conv, v_me, 'Des vêtements et des produits de beauté pour ma mère.', true, now() - interval '3 days' + interval '25 minutes'),
+      (v_conv, v_moussa, 'Parfait. Je passe le récupérer demain vers 18 h, ça vous va ?', true, now() - interval '2 days'),
+      (v_conv, v_moussa, 'Je viens d''atterrir à Dakar ✈️ Je vous écris quand je suis chez votre maman.', false, now() - interval '2 hours');
+  end if;
+end $$;
