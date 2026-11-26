@@ -22,7 +22,7 @@ const menu: { icon: IconName; title: string; sub: string; href?: Href }[] = [
 
 export default function Profile() {
   const insets = useSafeAreaInsets();
-  const { session, profile, signOut } = useAuth();
+  const { session, profile, signOut, isAdmin } = useAuth();
   const stats = useMyStats();
 
   if (!session) return <GuestProfile top={insets.top} />;
@@ -129,7 +129,10 @@ export default function Profile() {
 
         {/* Menu */}
         <View style={{ gap: 10 }}>
-          {menu.map((m) => (
+          {(isAdmin
+            ? [{ icon: 'speedometer-outline' as IconName, title: 'Administration', sub: 'Utilisateurs, annonces, transactions', href: '/admin' as Href }, ...menu]
+            : menu
+          ).map((m) => (
             <Card
               key={m.title}
               style={styles.menuItem}

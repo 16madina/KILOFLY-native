@@ -9,6 +9,8 @@ type Result = { error?: string; needsConfirmation?: boolean };
 type AuthState = {
   session: Session | null;
   profile: Profile | null;
+  /** Has the 'admin' role (checked by the server). */
+  isAdmin: boolean;
   loading: boolean;
   /** Browsing without an account ("Passer"). */
   guest: boolean;
@@ -30,14 +32,24 @@ const AuthContext = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [guest, setGuest] = useState(false);
 
   const loadProfile = useCallback(async (s: Session | null) => {
     if (!s) {
       setProfile(null);
+      setIsAdmin(false);
       return;
     }
+    // A banned account is signed out right away.
+    const { data: banned } = await supabase.rpc('my_ban_status');
+    if (banned === true) {
+      await supabase.auth.signOut();
+      return;
+    }
+    const { data: admin } = await supabase.rpc('is_admin');
+    setIsAdmin(admin === true);
     const { data } = await supabase.rpc('get_my_profile');
     setProfile(((data as Profile[] | null) ?? [])[0] ?? null);
   }, []);
@@ -60,12 +72,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       session,
       profile,
+      isAdmin,
       loading,
       guest,
       setGuest,
       async signIn(email, password) {
         const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-        return error ? { error: authErrorMessage(error.message) } : {};
+        if (error) return { error: authErrorMessage(error.message) };
+        const { data: banned } = await supabase.rpc('my_ban_status');
+        if (banned === true) {
+          await supabase.auth.signOut();
+          return { error: 'Ce compte a été suspendu. Contactez le support KiloFly.' };
+        }
+        return {};
       },
       async signUp({ email, password, fullName, userType }) {
         const { data, error } = await supabase.auth.signUp({
@@ -118,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return {};
       },
     }),
-    [session, profile, loading, guest, loadProfile],
+    [session, profile, isAdmin, loading, guest, loadProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
