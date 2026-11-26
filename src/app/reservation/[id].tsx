@@ -11,6 +11,8 @@ import { initialsOf, useAuth } from '@/lib/auth';
 import { cityCode } from '@/lib/cities';
 import { longDate, money } from '@/lib/listings';
 import { cancelReservation, respondReservation, useReservation, type Reservation } from '@/lib/reservations';
+import { DeliveryCodeCard, TrackingTimeline } from '@/components/tracking-timeline';
+import { reachedStep, TRAVELER_STEPS, useTracking } from '@/lib/tracking';
 import { colors } from '@/theme';
 
 const STEPS = ['Demande envoyée', 'Acceptée par le voyageur', 'Paiement sécurisé', 'Livré'];
@@ -22,12 +24,15 @@ export default function ReservationDetail() {
   const insets = useSafeAreaInsets();
   const { session, loading: authLoading } = useAuth();
   const { data: r, loading, reload } = useReservation(id);
+  const tracking = useTracking(id);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       reload();
+      tracking.reload();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [reload]),
   );
 
@@ -157,8 +162,14 @@ export default function ReservationDetail() {
             )}
           </Card>
 
+          {isBuyer && (r.status === 'in_progress' || r.status === 'delivered') && (
+            <DeliveryCodeCard reservationId={r.id} delivered={r.status === 'delivered'} />
+          )}
+
           {/* Steps */}
-          {!closed && (
+          {!closed && (r.status === 'in_progress' || r.status === 'delivered') ? (
+            <TrackingTimeline events={tracking.events} paid />
+          ) : !closed ? (
             <Card>
               {STEPS.map((s, i) => {
                 const done = i <= idx;
@@ -172,7 +183,7 @@ export default function ReservationDetail() {
                 );
               })}
             </Card>
-          )}
+          ) : null}
 
           {error && (
             <T v="small" color={colors.danger} style={{ textAlign: 'center' }}>
@@ -207,9 +218,15 @@ export default function ReservationDetail() {
             </T>
             <Button title="Annuler la réservation" small variant="dark" onPress={() => act(() => cancelReservation(r.id))} />
           </View>
+        ) : r.status === 'in_progress' && !isBuyer ? (
+          <Button
+            title={TRAVELER_STEPS[reachedStep(tracking.events)]?.action ?? 'Mettre à jour le suivi'}
+            leftIcon="navigate"
+            onPress={() => router.push({ pathname: '/tracking-update/[id]', params: { id: r.id } })}
+          />
         ) : r.status === 'in_progress' ? (
           <T v="small" color={colors.success} style={{ textAlign: 'center' }}>
-            {isBuyer ? 'Paiement sécurisé. Organisez la remise du colis avec le voyageur.' : 'Payé. Organisez la remise du colis avec l’expéditeur.'}
+            Paiement sécurisé. Le voyageur met à jour le suivi à chaque étape.
           </T>
         ) : (
           <T v="small" color={colors.textMuted} style={{ textAlign: 'center' }}>

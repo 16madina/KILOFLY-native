@@ -16,8 +16,8 @@ const menu: { icon: IconName; title: string; sub: string; href?: Href }[] = [
   { icon: 'swap-horizontal', title: 'Mes transactions', sub: 'Suivez vos envois, réceptions et paiements', href: '/(tabs)/tracking' },
   { icon: 'wallet-outline', title: 'Paiements', sub: 'Portefeuille, retraits, soldes et factures', href: '/wallet' },
   { icon: 'person-circle-outline', title: 'Informations personnelles', sub: 'Nom, photo, téléphone, ville', href: '/edit-profile' },
-  { icon: 'shield-checkmark-outline', title: 'Vérification', sub: 'Identité, téléphone et score de confiance' },
-  { icon: 'settings-outline', title: 'Préférences', sub: 'Notifications, confidentialité, langue, etc.' },
+  { icon: 'shield-checkmark-outline', title: 'Vérification', sub: 'Identité, téléphone et score de confiance', href: '/verification' },
+  { icon: 'settings-outline', title: 'Préférences', sub: 'Notifications, devise, sécurité, aide', href: '/settings' },
 ];
 
 export default function Profile() {

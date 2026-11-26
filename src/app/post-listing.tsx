@@ -95,10 +95,9 @@ export default function PostListing() {
             Vérifiez votre identité pour publier
           </T>
           <T v="small" color={colors.textMuted} style={{ textAlign: 'center', maxWidth: 300 }}>
-            Pour la sécurité des expéditeurs, seuls les voyageurs dont la pièce d’identité a été vérifiée peuvent proposer des kilos.
-            La vérification arrive bientôt dans votre profil.
-          </T>
-          <Button title="Retour" small variant="outline" onPress={() => setNeedsId(false)} />
+            Pour la sécurité des expéditeurs, seuls les voyageurs dont la pièce d’identité a été vérifiée peuvent proposer des kilos.          </T>
+          <Button title="Vérifier mon identité" small icon="arrow-forward" onPress={() => router.replace('/verification')} />
+          <Button title="Retour" small variant="dark" onPress={() => setNeedsId(false)} />
         </Card>
       </View>
     );

@@ -1,0 +1,128 @@
+// Real package timeline: dates, places, notes, delivery photo and recipient signature.
+import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { SvgXml } from 'react-native-svg';
+
+import { Card, T } from '@/components/ui';
+import { eventLabel, getDeliveryCode, photoUrl, reachedStep, signatureSvg, timeline, TRAVELER_STEPS, type TrackingEvent } from '@/lib/tracking';
+import { colors, fonts } from '@/theme';
+
+const when = (iso: string) =>
+  new Date(iso).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+export function TrackingTimeline({ events, paid }: { events: TrackingEvent[]; paid: boolean }) {
+  const done = timeline(events);
+  const reached = reachedStep(events);
+  const upcoming = paid ? TRAVELER_STEPS.filter((_, i) => i + 1 > reached && !done.some((e) => e.status === TRAVELER_STEPS[i].key)) : [];
+
+  return (
+    <Card>
+      <T v="h2" style={{ marginBottom: 14 }}>
+        Suivi du colis
+      </T>
+      {done.map((e, i) => (
+        <Row key={e.id} last={i === done.length - 1 && upcoming.length === 0} done>
+          <T v="bodyStrong">{eventLabel(e.status)}</T>
+          <T v="caption" color={colors.textMuted}>
+            {when(e.created_at)}
+            {e.location_name ? ` · ${e.location_name}` : ''}
+          </T>
+          {!!e.description && e.description !== eventLabel(e.status) && !e.is_automatic && (
+            <T v="small" color={colors.textMuted} style={{ marginTop: 2 }}>
+              {e.description}
+            </T>
+          )}
+          {(e.photo_path || e.has_signature) && <Proof event={e} />}
+        </Row>
+      ))}
+      {upcoming.map((s, i) => (
+        <Row key={s.key} last={i === upcoming.length - 1}>
+          <T v="body" color={colors.textFaint}>
+            {s.label}
+          </T>
+        </Row>
+      ))}
+    </Card>
+  );
+}
+
+function Row({ children, done, last }: { children: React.ReactNode; done?: boolean; last?: boolean }) {
+  return (
+    <View style={{ flexDirection: 'row', gap: 12 }}>
+      <View style={{ alignItems: 'center' }}>
+        <View style={[styles.node, done && styles.nodeDone]}>{done && <Ionicons name="checkmark" size={13} color={colors.onGold} />}</View>
+        {!last && <View style={[styles.line, done && { backgroundColor: colors.gold }]} />}
+      </View>
+      <View style={{ flex: 1, paddingBottom: last ? 0 : 16, gap: 1 }}>{children}</View>
+    </View>
+  );
+}
+
+function Proof({ event }: { event: TrackingEvent }) {
+  const [img, setImg] = useState<string | null>(null);
+  const [sig, setSig] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (event.photo_path) photoUrl(event.photo_path).then(setImg);
+    if (event.has_signature) signatureSvg(event.id).then(setSig);
+  }, [event]);
+
+  return (
+    <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+      {event.photo_path && (
+        <Pressable onPress={() => setOpen(true)} style={styles.thumb}>
+          {img ? <Image source={{ uri: img }} style={StyleSheet.absoluteFill} contentFit="cover" /> : <ActivityIndicator color={colors.gold} />}
+        </Pressable>
+      )}
+      {event.has_signature && (
+        <View style={[styles.thumb, { backgroundColor: '#F7F3EA', width: 120 }]}>
+          {sig ? <SvgXml xml={sig} width="100%" height="100%" /> : <ActivityIndicator color={colors.gold} />}
+        </View>
+      )}
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <Pressable style={styles.viewer} onPress={() => setOpen(false)}>
+          {img && <Image source={{ uri: img }} style={{ width: '100%', height: '80%' }} contentFit="contain" />}
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
+
+/** Sender side: the code to give to whoever receives the parcel. */
+export function DeliveryCodeCard({ reservationId, delivered }: { reservationId: string; delivered: boolean }) {
+  const [code, setCode] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    getDeliveryCode(reservationId).then(setCode);
+  }, [reservationId]);
+  if (code === null) return null;
+  return (
+    <Card gold style={{ alignItems: 'center', gap: 6 }}>
+      <T v="label" color={colors.gold}>
+        Code de livraison
+      </T>
+      {code === undefined ? (
+        <ActivityIndicator color={colors.gold} />
+      ) : (
+        <T v="display" style={{ letterSpacing: 8, fontFamily: fonts.bold }}>
+          {code}
+        </T>
+      )}
+      <T v="small" color={colors.textMuted} style={{ textAlign: 'center' }}>
+        {delivered
+          ? 'Ce code a servi à confirmer la livraison.'
+          : 'Donnez ce code à la personne qui recevra le colis. Le voyageur le lui demandera à la remise : sans ce code, il ne peut pas valider la livraison.'}
+      </T>
+    </Card>
+  );
+}
+
+const styles = StyleSheet.create({
+  node: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
+  nodeDone: { backgroundColor: colors.gold, borderColor: colors.gold },
+  line: { width: 2, flex: 1, backgroundColor: colors.border, marginVertical: 2 },
+  thumb: { width: 84, height: 84, borderRadius: 12, overflow: 'hidden', backgroundColor: colors.cardHi, alignItems: 'center', justifyContent: 'center' },
+  viewer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center', padding: 16 },
+});

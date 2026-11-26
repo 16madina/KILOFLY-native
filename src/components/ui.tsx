@@ -16,6 +16,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
+import { useUnreadCount } from '@/lib/notifications';
 import { colors, fonts, gradients, radius, shadow } from '@/theme';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -118,11 +119,17 @@ export function BrandHeader({
       )}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <Logo size={28} tagline={tagline} />
-        {right ?? <IconButton icon="notifications-outline" badge />}
+        {right ?? <NotificationBell />}
       </View>
       {children}
     </View>
   );
+}
+
+/** Header bell: opens the notifications list, dot only when something is unread. */
+function NotificationBell() {
+  const unread = useUnreadCount();
+  return <IconButton icon="notifications-outline" badge={unread > 0} onPress={() => router.push('/notifications')} />;
 }
 
 /* ---------- Surfaces ---------- */

@@ -12,6 +12,7 @@ import { colors } from '@/theme';
 const sections: { icon: IconName; title: string; sub: string; href: Href }[] = [
   { icon: 'people-outline', title: 'Utilisateurs', sub: 'Rechercher, suspendre ou réactiver un compte', href: '/admin/users' },
   { icon: 'airplane-outline', title: 'Annonces', sub: 'Modérer les voyages publiés', href: '/admin/listings' },
+  { icon: 'shield-checkmark-outline', title: 'Vérification d’identité', sub: 'Valider les pièces d’identité envoyées', href: '/admin/verification' },
   { icon: 'card-outline', title: 'Transactions', sub: 'Paiements, commissions et revenus', href: '/admin/transactions' },
 ];
 
@@ -20,6 +21,8 @@ const actionLabels: Record<string, string> = {
   unban: 'a réactivé',
   listing_suspend: 'a suspendu une annonce de',
   listing_reactivate: 'a réactivé une annonce de',
+  id_approve: 'a vérifié l’identité de',
+  id_reject: 'a refusé l’identité de',
 };
 
 export default function AdminDashboard() {
