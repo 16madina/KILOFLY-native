@@ -7,7 +7,7 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-n
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState, ErrorNote, Loading, RequestRow } from '@/components/listing-bits';
-import { SearchCard } from '@/components/search-card';
+import { SearchCard, type SearchMode } from '@/components/search-card';
 import { TicketCard } from '@/components/ticket-card';
 import { AccentTitle, BrandHeader, Button, Card, SectionHeader, T, tap, type IconName } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
@@ -20,6 +20,9 @@ export default function Home() {
   const { session } = useAuth();
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [mode, setMode] = useState<SearchMode>('trips');
+  const [start, setStart] = useState<string | null>(null);
+  const [end, setEnd] = useState<string | null>(null);
   const listings = useListings({ limit: 6 });
   const requests = useRequests(false);
 
@@ -32,7 +35,8 @@ export default function Home() {
     }, []),
   );
 
-  const search = (f = from, t = to) => router.push({ pathname: '/(tabs)/search', params: { from: f, to: t } });
+  const search = (f = from, t = to) =>
+    router.push({ pathname: '/(tabs)/search', params: { from: f, to: t, mode, start: start ?? '', end: end ?? '' } });
 
   return (
     <ScrollView
@@ -58,7 +62,18 @@ export default function Home() {
 
       {/* Search */}
       <View style={{ paddingHorizontal: 16, marginTop: 26 }}>
-        <SearchCard from={from} to={to} onFrom={setFrom} onTo={setTo} onSearch={() => search()} />
+        <SearchCard
+          mode={mode}
+          onMode={setMode}
+          from={from}
+          to={to}
+          onFrom={setFrom}
+          onTo={setTo}
+          start={start}
+          end={end}
+          onDates={(a, b) => (setStart(a), setEnd(b))}
+          onSearch={() => search()}
+        />
       </View>
 
       {/* Available trips */}
