@@ -300,17 +300,47 @@ export const INFO_PAGES: Record<InfoSlug, InfoPage> = {
         ],
       },
       {
-        heading: '6. Coopération avec les Autorités',
+        heading: '6. Connexion avec Google ou Apple',
+        paragraphs: [
+          "Si vous choisissez « Continuer avec Google » ou « Continuer avec Apple », KiloFly reçoit uniquement votre nom, votre adresse e-mail et, pour Google, votre photo de profil. Ces informations servent seulement à créer et sécuriser votre compte KiloFly et à vous identifier auprès des autres membres (nom et photo).",
+          "KiloFly n'accède pas à vos contacts, e-mails, fichiers ou autres données de votre compte Google ou Apple, ne les vend pas, ne les utilise pas à des fins publicitaires et ne les transfère à personne en dehors des prestataires techniques listés ci-dessous. L'utilisation des informations reçues des API Google respecte la Google API Services User Data Policy, y compris les exigences d'utilisation limitée.",
+          'Avec Apple, vous pouvez masquer votre adresse e-mail : nous recevons alors une adresse relais fournie par Apple.',
+        ],
+      },
+      {
+        heading: '7. Prestataires et Partage',
+        paragraphs: ['Vos données ne sont jamais vendues. Elles sont partagées uniquement avec :'],
+        bullets: [
+          "L'autre membre d'une réservation (nom, photo, note, messages échangés) pour réaliser la livraison",
+          'Supabase : hébergement sécurisé de la base de données et des fichiers',
+          'Stripe et FeexPay : traitement des paiements (KiloFly ne stocke jamais vos numéros de carte)',
+          'Resend : envoi des e-mails (confirmation, reçus, contrats)',
+          'Expo / Apple / Google : envoi des notifications sur votre téléphone',
+        ],
+      },
+      {
+        heading: '8. Durée de Conservation et Suppression du Compte',
+        paragraphs: [
+          'Vos données sont conservées tant que votre compte est actif. Vous pouvez supprimer votre compte à tout moment dans l’application (Profil → Préférences → Supprimer mon compte) ou en écrivant à kiloflyapp@hotmail.com. Vos données personnelles sont alors effacées, à l’exception des informations que la loi nous oblige à conserver (par exemple les factures, conservées le temps légal).',
+          "Les documents d'identité envoyés pour la vérification sont utilisés uniquement pour cette vérification et ne sont jamais montrés aux autres membres.",
+        ],
+      },
+      {
+        heading: '9. Mineurs',
+        paragraphs: ["KiloFly est réservé aux personnes de 18 ans et plus. Nous ne collectons pas sciemment de données concernant des mineurs."],
+      },
+      {
+        heading: '10. Coopération avec les Autorités',
         paragraphs: ['KiloFly peut divulguer certaines données si la loi l\'exige ou pour protéger la plateforme, les utilisateurs ou le public.'],
       },
       {
-        heading: '7. Cookies',
+        heading: '11. Cookies',
         paragraphs: [
           "Notre application utilise des cookies essentiels pour le fonctionnement de la plateforme (authentification, préférences). Aucun cookie de suivi publicitaire n'est utilisé sans votre consentement explicite.",
         ],
       },
       {
-        heading: '8. Contact',
+        heading: '12. Contact',
         paragraphs: ['Pour toute question concernant cette politique de confidentialité ou vos données personnelles, contactez-nous à : kiloflyapp@hotmail.com'],
       },
     ],

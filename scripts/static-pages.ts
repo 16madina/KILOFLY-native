@@ -1,3 +1,4 @@
+// @ts-nocheck -- Node build script, not part of the app.
 // Builds plain HTML pages (readable without JavaScript, for Google and search engines):
 // public/a-propos.html, public/confidentialite.html, public/conditions.html.
 // Run: npx -y tsx scripts/static-pages.ts
