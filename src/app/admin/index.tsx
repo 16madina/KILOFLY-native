@@ -13,6 +13,7 @@ const sections: { icon: IconName; title: string; sub: string; href: Href }[] = [
   { icon: 'people-outline', title: 'Utilisateurs', sub: 'Rechercher, suspendre ou réactiver un compte', href: '/admin/users' },
   { icon: 'airplane-outline', title: 'Annonces', sub: 'Modérer les voyages publiés', href: '/admin/listings' },
   { icon: 'shield-checkmark-outline', title: 'Vérification d’identité', sub: 'Valider les pièces d’identité envoyées', href: '/admin/verification' },
+  { icon: 'wallet-outline', title: 'Retraits', sub: 'Demandes de retrait à payer', href: '/admin/withdrawals' },
   { icon: 'card-outline', title: 'Transactions', sub: 'Paiements, commissions et revenus', href: '/admin/transactions' },
 ];
 
@@ -22,6 +23,8 @@ const actionLabels: Record<string, string> = {
   listing_suspend: 'a suspendu une annonce de',
   listing_reactivate: 'a réactivé une annonce de',
   id_approve: 'a vérifié l’identité de',
+  withdrawal_paid: 'a payé un retrait de',
+  withdrawal_refused: 'a refusé un retrait de',
   id_reject: 'a refusé l’identité de',
 };
 

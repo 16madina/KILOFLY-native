@@ -45,13 +45,14 @@ export const SUPPORT_EMAIL = 'kiloflyapp@hotmail.com';
 
 export default function Settings() {
   const insets = useSafeAreaInsets();
-  const { session, profile, refreshProfile, signOut } = useAuth();
+  const { session, profile, refreshProfile, signOut, loading } = useAuth();
   const [prefs, setPrefs] = useState<Prefs | null>(null);
   const [pw1, setPw1] = useState('');
   const [pw2, setPw2] = useState('');
   const [pwBusy, setPwBusy] = useState(false);
 
   useEffect(() => {
+    if (loading) return;
     if (!session) {
       router.replace('/auth');
       return;
@@ -62,7 +63,7 @@ export default function Settings() {
       .eq('user_id', session.user.id)
       .maybeSingle()
       .then(({ data }) => setPrefs((data as Prefs | null) ?? DEFAULT_PREFS));
-  }, [session]);
+  }, [session, loading]);
 
   if (!session) return null;
 

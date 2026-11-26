@@ -58,7 +58,7 @@ Talk to the owner in **French**. Keep explanations non-technical.
   rebuild server-side), ID verification (old one used Lovable AI gateway → replace, e.g. Claude API),
   reports/blocking · 6 push notifications (Expo + Firebase project `kilofly-33d0c`, package `com.kilofly.app`) ·
   7 admin stays web for now · later: Google/Apple sign-in (needs dev build), migrate old users before launch.
-- Still mock data: `src/data/mock.ts` (only the wallet screen now, until step 5).
+- No mock data left. Wallet: get_my_wallet/request_withdrawal (manual payouts by admin in /admin/withdrawals).
 - Done since (Nov 26): admin panel, Expo push, notifications list, secure tracking (delivery code + signature + photo),
   ID verification + admin review, preferences/legal pages/account deletion, search (trips/requests + date range),
   currency conversion, country/city/phone pickers, real messaging (RPCs + realtime + block). Migrations were applied

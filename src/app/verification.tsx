@@ -24,7 +24,7 @@ const docTypes: [string, string][] = [
 
 export default function Verification() {
   const insets = useSafeAreaInsets();
-  const { session, profile, refreshProfile } = useAuth();
+  const { session, profile, refreshProfile, loading } = useAuth();
   const [st, setSt] = useState<Status | null>(null);
   const [docType, setDocType] = useState('id_card');
   const [doc, setDoc] = useState<ImagePicker.ImagePickerAsset | null>(null);
@@ -38,9 +38,10 @@ export default function Verification() {
   }, []);
 
   useEffect(() => {
+    if (loading) return;
     if (!session) router.replace('/auth');
     else load();
-  }, [session, load]);
+  }, [loading, session, load]);
 
   async function pick(kind: 'doc' | 'selfie') {
     const cam = await ImagePicker.requestCameraPermissionsAsync();
