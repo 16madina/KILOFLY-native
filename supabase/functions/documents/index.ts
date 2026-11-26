@@ -4,7 +4,7 @@
 // Everything is rebuilt from the database (never from what the phone sends), and the e-mail only goes
 // to the signed-in user's own address. Self-contained so it can be deployed from the dashboard editor.
 import { createClient } from 'npm:@supabase/supabase-js@2.49.4';
-import { PDFDocument, rgb, StandardFonts, type PDFFont, type PDFPage } from 'npm:pdf-lib@1.17.1';
+import { PDFDocument, PDFName, PDFString, rgb, StandardFonts, type PDFFont, type PDFImage, type PDFPage } from 'npm:pdf-lib@1.17.1';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -16,6 +16,24 @@ const json = (body: unknown, status = 200) =>
 
 const db = () =>
   createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
+
+const SITE = 'https://www.kiloflyapp.com';
+const APP_STORE = 'https://apps.apple.com/app/id6757349482';
+const PLAY_STORE = 'https://play.google.com/store/apps/details?id=com.kilofly.app';
+
+const imageCache = new Map<string, Uint8Array>();
+async function asset(name: string): Promise<Uint8Array | null> {
+  if (imageCache.has(name)) return imageCache.get(name)!;
+  try {
+    const r = await fetch(`${SITE}/brand/${name}`);
+    if (!r.ok || !(r.headers.get('content-type') ?? '').startsWith('image/')) return null;
+    const b = new Uint8Array(await r.arrayBuffer());
+    imageCache.set(name, b);
+    return b;
+  } catch {
+    return null;
+  }
+}
 
 const NAVY = rgb(0.012, 0.059, 0.118);
 const GOLD = rgb(0.78, 0.6, 0.35);
@@ -51,9 +69,21 @@ class Doc {
     d.font = await d.pdf.embedFont(StandardFonts.Helvetica);
     d.bold = await d.pdf.embedFont(StandardFonts.HelveticaBold);
     d.newPage();
-    d.page.drawRectangle({ x: 0, y: 762, width: 595, height: 80, color: NAVY });
-    d.page.drawText('KiloFly', { x: 40, y: 800, size: 26, font: d.bold, color: GOLD });
-    d.page.drawText('Expédiez malin, voyagez utile · kiloflyapp.com', { x: 40, y: 780, size: 9, font: d.font, color: rgb(0.85, 0.85, 0.85) });
+    d.page.drawRectangle({ x: 0, y: 752, width: 595, height: 90, color: NAVY });
+    const [logo, word] = await Promise.all([asset('logo-k.png'), asset('wordmark.png')]);
+    if (logo && word) {
+      const li = await d.pdf.embedPng(logo);
+      const wi = await d.pdf.embedPng(word);
+      const lh = 52;
+      const lw = (li.width / li.height) * lh;
+      d.page.drawImage(li, { x: 40, y: 772, width: lw, height: lh });
+      const wh = 40;
+      d.page.drawImage(wi, { x: 40 + lw + 8, y: 778, width: (wi.width / wi.height) * wh, height: wh });
+    } else {
+      d.page.drawText('KiloFly', { x: 40, y: 795, size: 26, font: d.bold, color: GOLD });
+    }
+    const tag = 'EXPÉDIEZ MALIN, VOYAGEZ UTILE';
+    d.page.drawText(tag, { x: 555 - d.font.widthOfTextAtSize(tag, 8), y: 792, size: 8, font: d.font, color: GOLD });
     d.y = 730;
     d.text(clean(title), { size: 18, bold: true });
     d.text(clean(subtitle), { size: 10, color: GREY });
@@ -65,7 +95,7 @@ class Doc {
     this.y = 800;
   }
   ensure(h: number) {
-    if (this.y - h < 60) this.newPage();
+    if (this.y - h < 160) this.newPage();
   }
   text(s: string, o: { size?: number; bold?: boolean; color?: ReturnType<typeof rgb>; x?: number; width?: number } = {}) {
     const size = o.size ?? 11;
@@ -117,6 +147,42 @@ class Doc {
     this.page.drawText(clean(label), { x: 40, y: this.y - boxH - 14, size: 9, font: this.font, color: GREY });
     this.y -= boxH + 30;
   }
+  link(x: number, y: number, w: number, h: number, url: string) {
+    const ref = this.pdf.context.register(
+      this.pdf.context.obj({
+        Type: 'Annot',
+        Subtype: 'Link',
+        Rect: [x, y, x + w, y + h],
+        Border: [0, 0, 0],
+        A: { Type: 'Action', S: 'URI', URI: PDFString.of(url) },
+      }),
+    );
+    const annots = this.page.node.lookup(PDFName.of('Annots'));
+    if (annots) (annots as any).push(ref);
+    else this.page.node.set(PDFName.of('Annots'), this.pdf.context.obj([ref]));
+  }
+  /** Footer: app badges (clickable) + link to the reservation on the web. */
+  async footer(reservationId: string) {
+    const [a, g] = await Promise.all([asset('app-store.png'), asset('google-play.png')]);
+    const y = 70;
+    this.page.drawLine({ start: { x: 40, y: y + 70 }, end: { x: 555, y: y + 70 }, thickness: 0.6, color: rgb(0.85, 0.85, 0.85) });
+    this.page.drawText(clean('Suivez votre colis et discutez avec le voyageur dans l’application KiloFly :'), { x: 40, y: y + 52, size: 9.5, font: this.font, color: GREY });
+    const bh = 34;
+    let x = 40;
+    for (const [img, url] of [[a, APP_STORE], [g, PLAY_STORE]] as const) {
+      if (!img) continue;
+      const pi: PDFImage = await this.pdf.embedPng(img);
+      const bw = (pi.width / pi.height) * bh;
+      this.page.drawImage(pi, { x, y: y + 8, width: bw, height: bh });
+      this.link(x, y + 8, bw, bh, url);
+      x += bw + 10;
+    }
+    const web = `${SITE}/reservation/${reservationId}`;
+    const label = 'Voir la réservation en ligne';
+    this.page.drawText(clean(label), { x: 555 - this.bold.widthOfTextAtSize(clean(label), 9.5), y: y + 20, size: 9.5, font: this.bold, color: GOLD });
+    this.link(555 - this.bold.widthOfTextAtSize(clean(label), 9.5), y + 16, this.bold.widthOfTextAtSize(clean(label), 9.5), 14, web);
+    this.page.drawText(clean('KiloFly · kiloflyapp.com · kiloflyapp@hotmail.com'), { x: 40, y: y - 10, size: 8, font: this.font, color: GREY });
+  }
   async base64() {
     const bytes = await this.pdf.save();
     let bin = '';
@@ -167,6 +233,7 @@ async function contractPdf(reservationId: string, type: 'sender' | 'transporter'
   d.signature(sig.signature_data, `Signature de ${signer ?? ''}`);
   d.text(`Version des conditions : ${terms.version} · empreinte SHA-256 : ${terms.sha256 ?? '-'}`, { size: 8, color: GREY });
   d.text(`Adresse IP : ${sig.ip_address || '-'} · Document généré par KiloFly à partir de la signature enregistrée.`, { size: 8, color: GREY });
+  await d.footer(reservationId);
   return { pdf: await d.base64(), filename: `KiloFly-engagement-${type === 'sender' ? 'expediteur' : 'voyageur'}-${reservationId.slice(0, 8)}.pdf`, subject: terms.title };
 }
 
@@ -209,24 +276,50 @@ async function invoicePdf(reservationId: string, uid: string) {
   }
   d.y -= 16;
   d.text("Le paiement est conservé par KiloFly jusqu'à la livraison confirmée par le code du destinataire.", { size: 9, color: GREY });
-  d.text('KiloFly · kiloflyapp.com · kiloflyapp@hotmail.com', { size: 9, color: GREY });
+  await d.footer(reservationId);
   return { pdf: await d.base64(), filename: `KiloFly-${isBuyer ? 'recu' : 'releve'}-${t.id.slice(0, 8)}.pdf`, subject: isBuyer ? 'Votre reçu KiloFly' : 'Votre relevé de transport KiloFly' };
 }
 
-async function sendEmail(to: string, subject: string, filename: string, pdf: string) {
+const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+
+/** Branded e-mail: navy header with logo + wordmark, message, buttons, store badges. */
+function emailHtml(subject: string, intro: string, reservationId: string) {
+  const web = `${SITE}/reservation/${reservationId}`;
+  return `<!doctype html><html><body style="margin:0;background:#EEF0F3;font-family:Helvetica,Arial,sans-serif;color:#030F1E">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EEF0F3;padding:24px 0"><tr><td align="center">
+<table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden">
+<tr><td style="background:#030F1E;padding:22px 28px">
+  <img src="${SITE}/brand/logo-k.png" height="46" alt="" style="vertical-align:middle;border:0">
+  <img src="${SITE}/brand/wordmark.png" height="36" alt="KiloFly" style="vertical-align:middle;border:0;margin-left:6px">
+  <div style="color:#C79A58;font-size:10px;letter-spacing:2px;margin-top:6px">EXPÉDIEZ MALIN, VOYAGEZ UTILE</div>
+</td></tr>
+<tr><td style="padding:28px">
+  <h1 style="font-size:22px;margin:0 0 12px;color:#030F1E">${esc(subject)}</h1>
+  <p style="font-size:15px;line-height:22px;margin:0 0 14px">Bonjour,</p>
+  <p style="font-size:15px;line-height:22px;margin:0 0 20px">${intro}</p>
+  <p style="font-size:14px;line-height:21px;margin:0 0 22px;color:#555">Le document est en pièce jointe (PDF). Il reste disponible à tout moment dans l’application, sur la réservation.</p>
+  <a href="${web}" style="display:inline-block;background:#C79A58;color:#14110B;text-decoration:none;font-weight:bold;padding:13px 22px;border-radius:12px;font-size:15px">Voir ma réservation</a>
+</td></tr>
+<tr><td style="padding:0 28px 26px">
+  <p style="font-size:13px;color:#666;margin:0 0 10px">Suivez votre colis et discutez avec le voyageur dans l’application :</p>
+  <a href="${APP_STORE}"><img src="${SITE}/brand/app-store.png" height="44" alt="Télécharger dans l'App Store" style="border:0;margin-right:8px"></a>
+  <a href="${PLAY_STORE}"><img src="${SITE}/brand/google-play.png" height="44" alt="Disponible sur Google Play" style="border:0"></a>
+</td></tr>
+<tr><td style="background:#F6F3EC;padding:16px 28px;font-size:11px;color:#777">
+  KiloFly · <a href="${SITE}" style="color:#9A7A45">kiloflyapp.com</a> · kiloflyapp@hotmail.com<br>
+  Vous recevez cet e-mail parce que vous l’avez demandé depuis l’application KiloFly.
+</td></tr>
+</table></td></tr></table></body></html>`;
+}
+
+async function sendEmail(to: string, subject: string, filename: string, pdf: string, reservationId: string, intro: string) {
   const key = Deno.env.get('RESEND_API_KEY');
   if (!key) return false;
   const from = Deno.env.get('MAIL_FROM') ?? 'KiloFly <noreply@kiloflyapp.com>';
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from,
-      to: [to],
-      subject,
-      html: `<div style="font-family:Arial,sans-serif;color:#030F1E"><h2 style="color:#C79A58">KiloFly</h2><p>Bonjour,</p><p>Vous trouverez en pièce jointe votre document : <b>${subject}</b>.</p><p>Il est aussi disponible à tout moment dans l'application, sur la réservation.</p><p style="color:#666;font-size:12px">KiloFly · Expédiez malin, voyagez utile</p></div>`,
-      attachments: [{ filename, content: pdf }],
-    }),
+    body: JSON.stringify({ from, to: [to], subject, html: emailHtml(subject, intro, reservationId), attachments: [{ filename, content: pdf }] }),
   });
   if (!res.ok) console.error('resend', res.status, await res.text());
   return res.ok;
@@ -256,7 +349,7 @@ Deno.serve(async (req) => {
       out = await invoicePdf(reservationId, user.id);
     } else return json({ error: 'invalid kind' }, 400);
 
-    const emailed = body.email === true && !!user.email ? await sendEmail(user.email, out.subject, out.filename, out.pdf) : false;
+    const emailed = body.email === true && !!user.email ? await sendEmail(user.email, out.subject, out.filename, out.pdf, reservationId, body.kind === 'contract' ? 'Merci ! Votre engagement a bien été signé et enregistré par KiloFly.' : 'Merci pour votre confiance ! Voici le récapitulatif de votre paiement. L’argent reste sécurisé par KiloFly jusqu’à la livraison.') : false;
     return json({ pdf: out.pdf, filename: out.filename, emailed, email: body.email === true ? user.email : undefined });
   } catch (e) {
     const m = (e as Error).message;
