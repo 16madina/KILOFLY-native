@@ -1,10 +1,12 @@
 // Public profile: identity badge, stats, reviews, and the person's upcoming trips.
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { confirm, notify } from '@/components/admin-ui';
+import { ReportSheet } from '@/components/report-sheet';
 import { StarRow } from '@/components/review-card';
 import { TicketCard } from '@/components/ticket-card';
 import { Avatar, BackButton, BrandHeader, Button, Card, T, VerifiedBadge, type IconName } from '@/components/ui';
@@ -23,6 +25,7 @@ export default function PublicProfileScreen() {
   const { profile: p, reviews, reload } = usePublicProfile(id);
   const listings = useListings({ limit: 100 });
   const trips = listings.data.filter((l) => l.userId === id && l.status === 'active');
+  const [reporting, setReporting] = useState(false);
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
@@ -142,6 +145,12 @@ export default function PublicProfileScreen() {
                   reload();
                 }}
               />
+            )}
+            {session && !p.is_me && (
+              <Button title="Signaler ce profil" small variant="dark" leftIcon="flag-outline" onPress={() => setReporting(true)} />
+            )}
+            {session && !p.is_me && (
+              <ReportSheet visible={reporting} onClose={() => setReporting(false)} userId={p.id} userName={p.full_name} />
             )}
             {p.is_me && (
               <Button title="Modifier mon profil" small variant="outline" leftIcon="create-outline" onPress={() => router.push('/edit-profile')} />

@@ -6,6 +6,7 @@ import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, Pressable,
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { confirm, notify } from '@/components/admin-ui';
+import { ReportSheet } from '@/components/report-sheet';
 import { Avatar, BackButton, T, tap, VerifiedBadge } from '@/components/ui';
 import { initialsOf, useAuth } from '@/lib/auth';
 import { cityCode } from '@/lib/cities';
@@ -33,6 +34,7 @@ export default function Chat() {
   const { messages, send } = useChat(id);
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [reporting, setReporting] = useState(false);
   const list = useRef<FlatList<Row>>(null);
   const me = session?.user.id;
 
@@ -105,9 +107,13 @@ export default function Chat() {
             </Pressable>
           )}
         </View>
-        <Pressable onPress={menu} hitSlop={10} style={styles.more}>
-          <Ionicons name="ellipsis-horizontal" size={20} color={colors.text} />
+        <Pressable onPress={() => setReporting(true)} hitSlop={10} style={styles.more}>
+          <Ionicons name="flag-outline" size={18} color={colors.text} />
         </Pressable>
+        <Pressable onPress={menu} hitSlop={10} style={styles.more}>
+          <Ionicons name="ban-outline" size={18} color={colors.text} />
+        </Pressable>
+        {c && <ReportSheet visible={reporting} onClose={() => setReporting(false)} userId={c.other_id} userName={c.other_name} listingId={c.listing_id} conversationId={c.id} />}
       </View>
 
       {!messages ? (

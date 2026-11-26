@@ -31,6 +31,7 @@ import { daysBetween, DELIVERY_OPTIONS, longDate, money, setFavorite, setListing
 import { memberSince } from '@/lib/use-my-stats';
 import { useApprox } from '@/lib/currency';
 import { startConversation } from '@/lib/messages';
+import { ReportSheet } from '@/components/report-sheet';
 import { colors, fonts, radius } from '@/theme';
 
 const ICONS: [RegExp, IconName][] = [
@@ -59,6 +60,7 @@ export default function ListingDetail() {
   const [kg, setKg] = useState(1);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const [reporting, setReporting] = useState(false);
 
   useEffect(() => {
     if (l) setKg(Math.max(1, Math.min(3, l.remainingKg)));
@@ -304,6 +306,18 @@ export default function ListingDetail() {
             <T v="small" color={colors.gold} style={{ textAlign: 'center' }}>
               {note}
             </T>
+          )}
+
+          {!isMine && session && (
+            <Pressable onPress={() => setReporting(true)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8 }}>
+              <Ionicons name="flag-outline" size={15} color={colors.textMuted} />
+              <T v="small" color={colors.textMuted}>
+                Signaler cette annonce
+              </T>
+            </Pressable>
+          )}
+          {!isMine && session && (
+            <ReportSheet visible={reporting} onClose={() => setReporting(false)} userId={l.userId} userName={l.traveler.name} listingId={l.id} />
           )}
         </View>
       </ScrollView>
