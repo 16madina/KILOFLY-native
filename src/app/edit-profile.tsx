@@ -5,7 +5,9 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CityField, CountryField, fullPhone, localPart, PhoneField } from '@/components/location-fields';
 import { Avatar, BackButton, BrandHeader, Button, T, tap, type IconName } from '@/components/ui';
+import { findCountry, type Country } from '@/data/countries';
 import { initialsOf, useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { colors, fonts, radius } from '@/theme';
@@ -22,7 +24,7 @@ export default function EditProfile() {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('');
-  const [country, setCountry] = useState('');
+  const [country, setCountry] = useState<Country | undefined>(undefined);
   const [bio, setBio] = useState('');
   const [userType, setUserType] = useState('traveler');
   const [avatar, setAvatar] = useState<string | null>(null);
@@ -33,9 +35,10 @@ export default function EditProfile() {
   useEffect(() => {
     if (!profile) return;
     setFullName(profile.full_name ?? '');
-    setPhone(profile.phone ?? '');
+    const c = findCountry(profile.country);
+    setCountry(c);
+    setPhone(localPart(profile.phone, c));
     setCity(profile.city ?? '');
-    setCountry(profile.country ?? '');
     setBio(profile.bio ?? '');
     setUserType(profile.user_type ?? 'traveler');
     setAvatar(profile.avatar_url || null);
@@ -82,9 +85,9 @@ export default function EditProfile() {
     setBusy(true);
     const r = await updateProfile({
       full_name: fullName.trim(),
-      phone: phone.trim(),
+      phone: phone.startsWith('+') ? phone.trim() : fullPhone(phone, country),
       city: city.trim(),
-      country: country.trim(),
+      country: country?.name ?? '',
       bio: bio.trim(),
       user_type: userType,
     });
@@ -118,15 +121,9 @@ export default function EditProfile() {
           </View>
 
           <Field icon="person-outline" label="Nom complet" value={fullName} onChange={setFullName} autoCapitalize="words" />
-          <Field icon="call-outline" label="Téléphone" value={phone} onChange={setPhone} keyboard="phone-pad" placeholder="+33 6 12 34 56 78" />
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <View style={{ flex: 1 }}>
-              <Field icon="business-outline" label="Ville" value={city} onChange={setCity} autoCapitalize="words" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Field icon="flag-outline" label="Pays" value={country} onChange={setCountry} autoCapitalize="words" />
-            </View>
-          </View>
+          <CountryField value={country} onChange={(c) => (setCountry(c), setCity(''))} />
+          <CityField value={city} onChange={setCity} countryCode={country?.code} />
+          <PhoneField country={country} value={phone} onChange={setPhone} />
           <Field icon="chatbox-ellipses-outline" label="À propos de moi" value={bio} onChange={setBio} multiline placeholder="Vos trajets habituels, vos disponibilités…" />
 
           <View>

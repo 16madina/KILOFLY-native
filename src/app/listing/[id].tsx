@@ -29,6 +29,7 @@ import { initialsOf, useAuth } from '@/lib/auth';
 import { cityCode, cityImage, countryOf } from '@/lib/cities';
 import { daysBetween, DELIVERY_OPTIONS, longDate, money, setFavorite, setListingStatus, shortDate, useListing } from '@/lib/listings';
 import { memberSince } from '@/lib/use-my-stats';
+import { useApprox } from '@/lib/currency';
 import { colors, fonts, radius } from '@/theme';
 
 const ICONS: [RegExp, IconName][] = [
@@ -51,6 +52,7 @@ const iconFor = (item: string, fallback: IconName): IconName => ICONS.find(([re]
 export default function ListingDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
+  const approx = useApprox();
   const { session } = useAuth();
   const { data: l, setData, loading, reload } = useListing(id);
   const [kg, setKg] = useState(1);
@@ -214,6 +216,11 @@ export default function ListingDetail() {
             <Row icon="briefcase-outline" label="Kilos disponibles" right={<T v="h3">{l.remainingKg} kg</T>} />
             <Divider />
             <Row icon="cash-outline" label="Prix par kilo" right={<GoldPill label={`${money(l.pricePerKg, l.currency)}/kg`} large />} />
+            {approx(l.pricePerKg, l.currency) && (
+              <T v="caption" color={colors.textMuted} style={{ marginTop: -6, marginBottom: 10, textAlign: 'right' }}>
+                {approx(l.pricePerKg, l.currency)}/kg dans votre devise
+              </T>
+            )}
             <Divider />
             <View style={{ paddingVertical: 12 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
@@ -246,9 +253,16 @@ export default function ListingDetail() {
                       <Ionicons name="add" size={18} color={colors.text} />
                     </Pressable>
                   </View>
-                  <T v="bodyStrong" color={colors.goldBright} style={{ flex: 1, textAlign: 'right' }}>
-                    {money(kg * l.pricePerKg, l.currency)}
-                  </T>
+                  <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                    <T v="bodyStrong" color={colors.goldBright}>
+                      {money(kg * l.pricePerKg, l.currency)}
+                    </T>
+                    {approx(kg * l.pricePerKg, l.currency) && (
+                      <T v="caption" color={colors.textMuted}>
+                        {approx(kg * l.pricePerKg, l.currency)}
+                      </T>
+                    )}
+                  </View>
                 </View>
               </>
             )}

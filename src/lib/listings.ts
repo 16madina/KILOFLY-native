@@ -53,11 +53,11 @@ export type RequestCard = {
 
 /* ---------- Formatting ---------- */
 
-const SYMBOL: Record<string, string> = { EUR: '€', USD: '$', XOF: 'FCFA' };
+const SYMBOL: Record<string, string> = { EUR: '€', USD: '$', XOF: 'FCFA', XAF: 'FCFA', CAD: '$ CA', GBP: '£', MAD: 'DH', GNF: 'GNF' };
 export const currencySymbol = (c: string) => SYMBOL[c] ?? c;
 
 export function money(amount: number, currency: string) {
-  if (currency === 'XOF') return `${Math.round(amount).toLocaleString('fr-FR')} FCFA`;
+  if (currency === 'XOF' || currency === 'XAF' || currency === 'GNF') return `${Math.round(amount).toLocaleString('fr-FR')} ${currencySymbol(currency)}`;
   const n = Number.isInteger(amount) ? String(amount) : amount.toFixed(2).replace('.', ',');
   return `${n} ${currencySymbol(currency)}`;
 }

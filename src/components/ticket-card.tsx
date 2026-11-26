@@ -7,6 +7,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Avatar, FlightProgress, GoldPill, Stars, T, tap, VerifiedBadge } from '@/components/ui';
 import { initialsOf } from '@/lib/auth';
 import { cityCode, cityImage } from '@/lib/cities';
+import { useApprox } from '@/lib/currency';
 import { money, shortDate, type ListingCard } from '@/lib/listings';
 import { colors, fonts, gradients, radius } from '@/theme';
 
@@ -24,6 +25,7 @@ export function TicketCard({ listing }: { listing: ListingCard }) {
   const ratio = l.totalKg > 0 ? booked / l.totalKg : 0;
   const low = l.remainingKg > 0 && l.remainingKg <= 5;
   const inactive = l.status !== 'active';
+  const approx = useApprox()(l.pricePerKg, l.currency);
 
   return (
     <Pressable
@@ -88,20 +90,27 @@ export function TicketCard({ listing }: { listing: ListingCard }) {
               </View>
             )}
           </View>
+          <View style={[styles.line, { marginTop: 6, flexWrap: 'wrap' }]}>
+            <GoldPill label={`${money(l.pricePerKg, l.currency)}/kg`} />
+            {approx && (
+              <T v="caption" color={colors.textMuted}>
+                {approx}/kg
+              </T>
+            )}
+          </View>
         </View>
 
         <View style={styles.sep} />
 
-        {/* Kilos & price */}
+        {/* Kilos */}
         <View style={styles.price}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
             <Ionicons name="briefcase-outline" size={15} color={colors.gold} />
             <T v="bodyStrong">{l.remainingKg} kg</T>
           </View>
-          <T v="caption" color={colors.textMuted} style={{ marginBottom: 6 }}>
+          <T v="caption" color={colors.textMuted}>
             disponibles
           </T>
-          <GoldPill label={`${money(l.pricePerKg, l.currency)}/kg`} style={{ alignSelf: 'center' }} />
         </View>
       </View>
 
@@ -132,7 +141,7 @@ const styles = StyleSheet.create({
   route: { flex: 1, justifyContent: 'center', paddingHorizontal: 10, gap: 3 },
   line: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   status: { marginLeft: 'auto', paddingHorizontal: 6, paddingVertical: 1, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.borderStrong },
-  price: { width: 92, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
+  price: { width: 84, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
   progress: { borderTopWidth: 1, borderTopColor: colors.border, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 10 },
   progressHead: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 },
 });
