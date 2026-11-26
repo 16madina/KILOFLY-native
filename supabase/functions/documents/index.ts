@@ -283,8 +283,9 @@ async function invoicePdf(reservationId: string, uid: string) {
 const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
 /** Branded e-mail: navy header with logo + wordmark, message, buttons, store badges. */
-function emailHtml(subject: string, intro: string, reservationId: string) {
+function emailHtml(subject: string, intro: string, reservationId: string, opts: { body?: string; cta?: [string, string]; attachmentNote?: boolean } = {}) {
   const web = `${SITE}/reservation/${reservationId}`;
+  const cta = opts.cta ?? ['Voir ma réservation', web];
   return `<!doctype html><html><body style="margin:0;background:#EEF0F3;font-family:Helvetica,Arial,sans-serif;color:#030F1E">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EEF0F3;padding:24px 0"><tr><td align="center">
 <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden">
@@ -297,8 +298,9 @@ function emailHtml(subject: string, intro: string, reservationId: string) {
   <h1 style="font-size:22px;margin:0 0 12px;color:#030F1E">${esc(subject)}</h1>
   <p style="font-size:15px;line-height:22px;margin:0 0 14px">Bonjour,</p>
   <p style="font-size:15px;line-height:22px;margin:0 0 20px">${intro}</p>
-  <p style="font-size:14px;line-height:21px;margin:0 0 22px;color:#555">Le document est en pièce jointe (PDF). Il reste disponible à tout moment dans l’application, sur la réservation.</p>
-  <a href="${web}" style="display:inline-block;background:#C79A58;color:#14110B;text-decoration:none;font-weight:bold;padding:13px 22px;border-radius:12px;font-size:15px">Voir ma réservation</a>
+  ${opts.body ?? ''}
+  ${opts.attachmentNote === false ? '' : '<p style="font-size:14px;line-height:21px;margin:0 0 22px;color:#555">Le document est en pièce jointe (PDF). Il reste disponible à tout moment dans l’application, sur la réservation.</p>'}
+  <a href="${cta[1]}" style="display:inline-block;background:#C79A58;color:#14110B;text-decoration:none;font-weight:bold;padding:13px 22px;border-radius:12px;font-size:15px">${cta[0]}</a>
 </td></tr>
 <tr><td style="padding:0 28px 26px">
   <p style="font-size:13px;color:#666;margin:0 0 10px">Suivez votre colis et discutez avec le voyageur dans l’application :</p>
@@ -307,34 +309,115 @@ function emailHtml(subject: string, intro: string, reservationId: string) {
 </td></tr>
 <tr><td style="background:#F6F3EC;padding:16px 28px;font-size:11px;color:#777">
   KiloFly · <a href="${SITE}" style="color:#9A7A45">kiloflyapp.com</a> · kiloflyapp@hotmail.com<br>
-  Vous recevez cet e-mail parce que vous l’avez demandé depuis l’application KiloFly.
+  Vous recevez cet e-mail parce que vous avez un compte KiloFly.
 </td></tr>
 </table></td></tr></table></body></html>`;
 }
 
-async function sendEmail(to: string, subject: string, filename: string, pdf: string, reservationId: string, intro: string) {
+async function sendHtml(to: string, subject: string, html: string, attachments?: { filename: string; content: string }[]) {
   const key = Deno.env.get('RESEND_API_KEY');
   if (!key) return false;
   const from = Deno.env.get('MAIL_FROM') ?? 'KiloFly <noreply@kiloflyapp.com>';
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from, to: [to], subject, html: emailHtml(subject, intro, reservationId), attachments: [{ filename, content: pdf }] }),
+    body: JSON.stringify({ from, to: [to], subject, html, ...(attachments ? { attachments } : {}) }),
   });
   if (!res.ok) console.error('resend', res.status, await res.text());
   return res.ok;
+}
+
+const li = (t: string) => `<tr><td style="padding:6px 10px 6px 0;vertical-align:top;color:#C79A58;font-size:16px">✦</td><td style="padding:6px 0;font-size:15px;line-height:22px">${t}</td></tr>`;
+
+/** "Vérifiez votre identité" — sent once the e-mail address is confirmed. */
+function verifyIdentityEmail(name: string) {
+  const subject = 'Dernière étape : vérifiez votre identité';
+  return {
+    subject,
+    html: emailHtml(subject, `${esc(name ? name + ', votre' : 'Votre')} adresse e-mail est confirmée, merci ! Il ne reste qu’une étape pour profiter pleinement de KiloFly : vérifier votre identité.`, '', {
+      attachmentNote: false,
+      cta: ['Vérifier mon identité', `${SITE}/verification`],
+      body: `<p style="font-size:15px;line-height:22px;margin:0 0 10px">C’est rapide (2 minutes) et cela protège toute la communauté :</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 18px">
+${li('<b>Une photo de votre pièce d’identité</b> (carte d’identité, passeport ou titre de séjour)')}
+${li('<b>Un selfie</b> pour confirmer que c’est bien vous')}
+${li('Notre équipe valide vos documents, en général <b>sous 24 h</b>')}
+</table>
+<p style="font-size:15px;line-height:22px;margin:0 0 20px">Une fois vérifié, le <b>badge doré « Identité vérifiée »</b> apparaît sur votre profil : les expéditeurs vous font davantage confiance, et vous pouvez proposer vos kilos disponibles. Vos documents restent privés et ne sont jamais montrés aux autres utilisateurs.</p>`,
+    }),
+  };
+}
+
+/** "Bienvenue" — sent once the identity has been approved. */
+function welcomeEmail(name: string) {
+  const subject = 'Bienvenue sur KiloFly ✈️';
+  return {
+    subject,
+    html: emailHtml(subject, `${esc(name || 'Bonjour')}, votre identité est vérifiée : bienvenue dans la communauté KiloFly ! Votre badge doré « Identité vérifiée » est désormais visible sur votre profil.`, '', {
+      attachmentNote: false,
+      cta: ['Ouvrir KiloFly', SITE],
+      body: `<p style="font-size:15px;line-height:22px;margin:0 0 10px">KiloFly relie les voyageurs qui ont des kilos libres dans leur valise et les personnes qui veulent envoyer un colis à leurs proches, entre l’Europe, le Canada et l’Afrique.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 14px">
+${li('<b>Vous voyagez ?</b> Publiez votre trajet et rentabilisez vos kilos disponibles.')}
+${li('<b>Vous envoyez un colis ?</b> Trouvez un voyageur vérifié sur votre trajet, réservez et payez en toute sécurité.')}
+${li('<b>Paiement protégé :</b> l’argent est conservé par KiloFly et versé au voyageur seulement à la livraison, confirmée par le code du destinataire.')}
+${li('<b>Suivi en temps réel</b>, messagerie intégrée et avis après chaque livraison.')}
+</table>
+<p style="font-size:15px;line-height:22px;margin:0 0 20px">Merci de votre confiance, et à très vite à bord !<br><b>L’équipe KiloFly</b></p>`,
+    }),
+  };
+}
+
+/** Sends the lifecycle e-mail that matches the user's current state, at most once per kind. */
+async function lifecycle(userId: string) {
+  const s = db();
+  const { data: p } = await s.from('profiles').select('full_name, email_verified, id_verified').eq('id', userId).maybeSingle();
+  const { data: u } = await s.auth.admin.getUserById(userId);
+  const email = u?.user?.email;
+  if (!p || !email) return { sent: null };
+  const first = (p.full_name ?? '').split(' ')[0] ?? '';
+  const kind = p.id_verified ? 'welcome' : p.email_verified ? 'verify_identity' : null;
+  if (!kind) return { sent: null };
+  const { error: dup } = await s.from('email_log').insert({ user_id: userId, kind });
+  if (dup) return { sent: null }; // already sent
+  const m = kind === 'welcome' ? welcomeEmail(first) : verifyIdentityEmail(first);
+  const ok = await sendHtml(email, m.subject, m.html);
+  if (!ok) await s.from('email_log').delete().eq('user_id', userId).eq('kind', kind);
+  return { sent: ok ? kind : null };
+}
+
+async function sendEmail(to: string, subject: string, filename: string, pdf: string, reservationId: string, intro: string) {
+  return sendHtml(to, subject, emailHtml(subject, intro, reservationId), [{ filename, content: pdf }]);
 }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405);
   try {
+    const raw = await req.clone().json().catch(() => ({}));
+    // Called by the database when a profile becomes e-mail- or ID-verified. Safe without auth:
+    // it only e-mails the account owner, once per kind, and only if the state really changed.
+    if (raw.kind === 'lifecycle') {
+      if (!/^[0-9a-f-]{36}$/i.test(String(raw.user_id ?? ''))) return json({ error: 'invalid user' }, 400);
+      return json(await lifecycle(raw.user_id));
+    }
     const token = req.headers.get('Authorization')?.replace(/^Bearer\s+/i, '');
     const { data: u } = token ? await db().auth.getUser(token) : { data: { user: null } };
     const user = u?.user;
     if (!user) return json({ error: 'not signed in' }, 401);
 
-    const body = await req.json().catch(() => ({}));
+    const body = raw;
+    if (body.kind === 'preview_emails') {
+      // Admin preview: sends both onboarding e-mails to the caller only.
+      const { data: role } = await db().from('user_roles').select('role').eq('user_id', user.id).eq('role', 'admin').maybeSingle();
+      if (!role) return json({ error: 'not allowed' }, 403);
+      const { data: p } = await db().from('profiles').select('full_name').eq('id', user.id).maybeSingle();
+      const first = (p?.full_name ?? '').split(' ')[0] ?? '';
+      const a = verifyIdentityEmail(first);
+      const b = welcomeEmail(first);
+      const sent = [await sendHtml(user.email!, a.subject, a.html), await sendHtml(user.email!, b.subject, b.html)];
+      return json({ sent, to: user.email });
+    }
     const reservationId = String(body.reservation_id ?? '');
     if (!/^[0-9a-f-]{36}$/i.test(reservationId)) return json({ error: 'invalid reservation' }, 400);
 
