@@ -64,3 +64,9 @@ Talk to the owner in **French**. Keep explanations non-technical.
   currency conversion, country/city/phone pickers, real messaging (RPCs + realtime + block). Migrations were applied
   through the Supabase SQL editor; demo data in `supabase/demo/` (remove with remove_demo.sql).
 - Test account `madina diallo` is marked `id_verified` with `verification_method='manual_test'` — **revert before launch**.
+
+## Google / Apple sign-in (2026-11-26)
+- Google: OAuth client "KiloFly Supabase" in Google Cloud project kilofly-33d0c; brand verified (static pages public/a-propos.html, confidentialite.html, conditions.html built by `npx -y tsx scripts/static-pages.ts`; re-run after editing src/data/info.ts).
+- Apple: App ID com.kilofly.app has Sign In with Apple; web Services ID com.kilofly.app.web; key M76YC84RVX (team 6XW2XM3NDF). Supabase Apple Client IDs must list com.kilofly.app.web FIRST.
+- The Apple web secret is a JWT that EXPIRES 2027-05-25: regenerate from AuthKey_M76YC84RVX.p8 (owner keeps it) and paste into Supabase → Auth → Providers → Apple.
+- iPhone uses native Apple sign-in (expo-apple-authentication) → needs a new store build.
