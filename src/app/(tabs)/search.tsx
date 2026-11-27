@@ -96,7 +96,7 @@ export default function Search() {
       <View style={styles.modeTabs}>
         {(
           [
-            ['trips', 'cube-outline', 'J’envoie un colis', 'Trouver un voyageur'],
+            ['trips', 'cube-outline', 'J’envoie', 'Trouver un voyageur'],
             ['requests', 'airplane', 'Je voyage', 'Trouver des colis'],
           ] as const
         ).map(([m, icon, title, sub]) => {
@@ -227,9 +227,9 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
     paddingVertical: 12,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
