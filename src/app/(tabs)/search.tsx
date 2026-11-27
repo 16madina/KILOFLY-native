@@ -155,7 +155,12 @@ export default function Search() {
                   ))}
                 </View>
               ) : (
-                <EmptyState icon="cube-outline" title="Aucune demande" text="Aucun expéditeur ne cherche encore de voyageur sur ce trajet à ces dates." />
+                <EmptyState
+                  icon="cube-outline"
+                  title="Aucune demande"
+                  text={text || routeLabel ? 'Aucun expéditeur ne cherche de voyageur pour cette recherche.' : 'Aucun expéditeur ne cherche de voyageur pour le moment.'}
+                  action={<Button title="Publier une demande" small leftIcon="add" onPress={() => router.push('/post-request')} />}
+                />
               )}
             </>
           )}
