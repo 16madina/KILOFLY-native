@@ -1,6 +1,7 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState, ErrorNote, Loading } from '@/components/listing-bits';
@@ -9,7 +10,7 @@ import { SearchCard, type SearchMode } from '@/components/search-card';
 import { router } from 'expo-router';
 import { requireAuth } from '@/components/sign-in-prompt';
 import { TicketCard } from '@/components/ticket-card';
-import { AccentTitle, BrandHeader, Button, Chip, T } from '@/components/ui';
+import { AccentTitle, BrandHeader, Button, Chip, T, tap } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
 import { createRouteAlert, daysBetween, toIsoDay, useListings, useRequests } from '@/lib/listings';
 import { colors } from '@/theme';
@@ -91,10 +92,34 @@ export default function Search() {
         </T>
       </BrandHeader>
 
-      <View style={{ paddingHorizontal: 16, marginTop: 22 }}>
+      {/* Two clear tabs: I send a parcel (find a traveler) / I travel (find parcels to carry). */}
+      <View style={styles.modeTabs}>
+        {(
+          [
+            ['trips', 'cube-outline', 'J’envoie un colis', 'Trouver un voyageur'],
+            ['requests', 'airplane', 'Je voyage', 'Trouver des colis'],
+          ] as const
+        ).map(([m, icon, title, sub]) => {
+          const active = mode === m;
+          return (
+            <Pressable key={m} onPress={() => (tap(), setMode(m))} style={[styles.modeTab, active && styles.modeTabActive]}>
+              <Ionicons name={icon} size={20} color={active ? colors.bg : colors.gold} />
+              <View style={{ flexShrink: 1 }}>
+                <T v="bodyStrong" color={active ? colors.bg : colors.text} numberOfLines={1}>
+                  {title}
+                </T>
+                <T v="caption" color={active ? colors.bg : colors.textMuted} numberOfLines={1}>
+                  {sub}
+                </T>
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <View style={{ paddingHorizontal: 16, marginTop: 14 }}>
         <SearchCard
           mode={mode}
-          onMode={setMode}
           from={from}
           to={to}
           onFrom={setFrom}
@@ -197,5 +222,19 @@ export default function Search() {
 }
 
 const styles = StyleSheet.create({
+  modeTabs: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, marginTop: 22 },
+  modeTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.bgRaised,
+  },
+  modeTabActive: { backgroundColor: colors.gold, borderColor: colors.gold },
   filters: { gap: 8, paddingHorizontal: 16, paddingTop: 18, paddingBottom: 16 },
 });

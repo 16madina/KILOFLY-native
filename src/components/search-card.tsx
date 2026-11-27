@@ -42,7 +42,8 @@ export function SearchCard({
   ];
 
   return (
-    <Card style={{ paddingTop: 6 }}>
+    <Card style={{ paddingTop: onMode ? 6 : 16 }}>
+      {onMode && (
       <View style={styles.tabs}>
         {tabs.map(([m, icon, label]) => {
           const active = mode === m;
@@ -56,8 +57,9 @@ export function SearchCard({
           );
         })}
       </View>
+      )}
 
-      <View style={{ gap: 10, marginTop: 14 }}>
+      <View style={{ gap: 10, marginTop: onMode ? 14 : 0 }}>
         <Field icon="location-outline" label="Départ" placeholder="Ville ou pays de départ" value={from} onChange={onFrom} />
         <Field icon="location-outline" label="Destination" placeholder="Ville ou pays d’arrivée" value={to} onChange={onTo} />
         <Pressable
