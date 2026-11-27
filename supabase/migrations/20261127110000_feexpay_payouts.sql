@@ -4,6 +4,10 @@
 -- sends it with FeexPay, then settles it. Anything it cannot send (bank, Interac, unsupported country)
 -- stays 'pending' for an admin, as before.
 
+alter table public.wallet_transactions drop constraint if exists wallet_transactions_status_check;
+alter table public.wallet_transactions add constraint wallet_transactions_status_check
+  check (status = any (array['pending', 'processing', 'completed', 'failed', 'cancelled']));
+
 -- Claim a pending mobile-money withdrawal for automatic sending (service role only).
 create or replace function public.payout_claim(p_id uuid, p_uid uuid)
 returns table (id uuid, amount numeric, currency text, method text, phone text)
