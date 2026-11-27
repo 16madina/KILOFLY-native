@@ -1,19 +1,19 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState, ErrorNote, Loading } from '@/components/listing-bits';
 import { RequestRow } from '@/components/listing-bits';
-import { SearchCard, type SearchMode } from '@/components/search-card';
+import { type SearchMode } from '@/components/search-card';
 import { router } from 'expo-router';
 import { requireAuth } from '@/components/sign-in-prompt';
 import { TicketCard } from '@/components/ticket-card';
 import { AccentTitle, BrandHeader, Button, Chip, T, tap } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
 import { createRouteAlert, daysBetween, toIsoDay, useListings, useRequests } from '@/lib/listings';
-import { colors } from '@/theme';
+import { colors, fonts } from '@/theme';
 
 const filters = ['Tous', 'Cette semaine', 'Vérifiés', '10 kg et +', 'Moins cher'] as const;
 type Filter = (typeof filters)[number];
@@ -30,6 +30,7 @@ export default function Search() {
   const [to, setTo] = useState(params.to ?? '');
   const [query, setQuery] = useState({ from: params.from ?? '', to: params.to ?? '' });
   const [filter, setFilter] = useState<Filter>('Tous');
+  const [text, setText] = useState('');
   const [alert, setAlert] = useState<'idle' | 'saving' | 'saved' | string>('idle');
 
   // Arriving from the home search button or a popular route.
@@ -44,10 +45,12 @@ export default function Search() {
     setAlert('idle');
   }, [params.from, params.to, params.mode, params.start, params.end]);
 
-  const listings = useListings({ from: query.from, to: query.to, limit: 100 });
+  const norm = (x: string) => x.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  const listings = useListings({ from: query.from, to: query.to, limit: 200 });
 
   const results = useMemo(() => {
     let r = listings.data;
+    if (text.trim()) r = r.filter((l) => norm(`${l.from} ${l.to}`).includes(norm(text)));
     const today = toIsoDay(new Date());
     if (range.start) r = r.filter((l) => l.departDate >= range.start!);
     if (range.end) r = r.filter((l) => l.departDate <= range.end!);
@@ -56,19 +59,19 @@ export default function Search() {
     if (filter === '10 kg et +') r = r.filter((l) => l.remainingKg >= 10);
     if (filter === 'Moins cher') r = [...r].sort((a, b) => a.pricePerKg - b.pricePerKg);
     return r;
-  }, [listings.data, filter, range]);
+  }, [listings.data, filter, range, text]);
 
   const requests = useRequests(false);
-  const norm = (x: string) => x.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
   const requestResults = useMemo(() => {
     let r = requests.data.filter((q) => q.status === 'active');
+    if (text.trim()) r = r.filter((q) => norm(`${q.from} ${q.to}`).includes(norm(text)));
     if (query.from) r = r.filter((q) => norm(q.from).includes(norm(query.from)));
     if (query.to) r = r.filter((q) => norm(q.to).includes(norm(query.to)));
     // The sender's window [dateStart, dateEnd] must overlap the searched dates.
     if (range.start) r = r.filter((q) => (q.dateEnd ?? q.dateStart) >= range.start!);
     if (range.end) r = r.filter((q) => q.dateStart <= range.end!);
     return r;
-  }, [requests.data, query, range]);
+  }, [requests.data, query, range, text]);
 
   const saveAlert = () =>
     requireAuth(!!session, async () => {
@@ -85,54 +88,53 @@ export default function Search() {
       contentContainerStyle={{ paddingBottom: 130 }}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}>
-      <BrandHeader top={insets.top}>
-        <AccentTitle before="Rechercher " accent={mode === 'trips' ? 'un voyage' : 'des colis'} style={{ marginTop: 34 }} />
-        <T v="body" color={colors.textMuted} style={{ marginTop: 6, maxWidth: 240 }}>
-          {mode === 'trips' ? 'Trouvez le voyageur idéal pour votre colis.' : 'Voyageurs : trouvez des colis à transporter sur votre trajet.'}
-        </T>
+      <BrandHeader top={insets.top} art={false}>
+        <AccentTitle before="Les " accent="annonces" style={{ marginTop: 26 }} />
       </BrandHeader>
 
-      {/* Two clear tabs: I send a parcel (find a traveler) / I travel (find parcels to carry). */}
+      {/* Two tabs: people who travel / people who want to send a parcel. */}
       <View style={styles.modeTabs}>
         {(
           [
-            ['trips', 'cube-outline', 'J’envoie', 'Trouver un voyageur'],
-            ['requests', 'airplane', 'Je voyage', 'Trouver des colis'],
+            ['trips', 'airplane', 'Voyageurs'],
+            ['requests', 'cube-outline', 'Expéditeurs'],
           ] as const
-        ).map(([m, icon, title, sub]) => {
+        ).map(([m, icon, title]) => {
           const active = mode === m;
           return (
             <Pressable key={m} onPress={() => (tap(), setMode(m))} style={[styles.modeTab, active && styles.modeTabActive]}>
-              <Ionicons name={icon} size={20} color={active ? colors.bg : colors.gold} />
-              <View style={{ flexShrink: 1 }}>
-                <T v="bodyStrong" color={active ? colors.bg : colors.text} numberOfLines={1}>
-                  {title}
-                </T>
-                <T v="caption" color={active ? colors.bg : colors.textMuted} numberOfLines={1}>
-                  {sub}
-                </T>
-              </View>
+              <Ionicons name={icon} size={18} color={active ? colors.bg : colors.gold} />
+              <T v="bodyStrong" color={active ? colors.bg : colors.text}>
+                {title}
+              </T>
             </Pressable>
           );
         })}
       </View>
 
-      <View style={{ paddingHorizontal: 16, marginTop: 14 }}>
-        <SearchCard
-          mode={mode}
-          from={from}
-          to={to}
-          onFrom={setFrom}
-          onTo={setTo}
-          start={start}
-          end={end}
-          onDates={(a, b) => (setStart(a), setEnd(b))}
-          onSearch={() => {
-            setQuery({ from, to });
-            setRange({ start, end });
-            setAlert('idle');
-          }}
+      {/* Small search bar: a city or a country, matched on departure or arrival. */}
+      <View style={styles.searchBar}>
+        <Ionicons name="search" size={18} color={colors.textMuted} />
+        <TextInput
+          value={text}
+          onChangeText={setText}
+          placeholder={mode === 'trips' ? 'Rechercher une ville, un pays…' : 'Rechercher une ville, un pays…'}
+          placeholderTextColor={colors.textFaint}
+          style={styles.searchInput}
+          autoCorrect={false}
+          returnKeyType="search"
         />
+        {!!(text || routeLabel) && (
+          <Pressable
+            hitSlop={8}
+            onPress={() => {
+              setText('');
+              setQuery({ from: '', to: '' });
+              setRange({ start: null, end: null });
+            }}>
+            <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+          </Pressable>
+        )}
       </View>
 
       {mode === 'requests' ? (
@@ -222,11 +224,26 @@ export default function Search() {
 }
 
 const styles = StyleSheet.create({
-  modeTabs: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, marginTop: 22 },
+  modeTabs: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, marginTop: 18 },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginHorizontal: 16,
+    marginTop: 12,
+    height: 46,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.field,
+  },
+  searchInput: { flex: 1, color: colors.text, fontFamily: fonts.regular, fontSize: 15 },
   modeTab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
     paddingVertical: 12,
     paddingHorizontal: 12,
