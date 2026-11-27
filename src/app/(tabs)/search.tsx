@@ -5,7 +5,7 @@ import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState, ErrorNote, Loading } from '@/components/listing-bits';
-import { RequestRow } from '@/components/listing-bits';
+import { RequestTicket } from '@/components/listing-bits';
 import { type SearchMode } from '@/components/search-card';
 import { router } from 'expo-router';
 import { requireAuth } from '@/components/sign-in-prompt';
@@ -149,9 +149,9 @@ export default function Search() {
                 {requestResults.length} demande{requestResults.length > 1 ? 's' : ''} de colis{routeLabel ? ` · ${routeLabel}` : ''}
               </T>
               {requestResults.length > 0 ? (
-                <View style={{ gap: 10 }}>
+                <View style={{ gap: 14 }}>
                   {requestResults.map((r) => (
-                    <RequestRow key={r.id} r={r} onPress={() => router.push({ pathname: '/request/[id]', params: { id: r.id } })} />
+                    <RequestTicket key={r.id} r={r} onPress={() => router.push({ pathname: '/request/[id]', params: { id: r.id } })} />
                   ))}
                 </View>
               ) : (

@@ -2,9 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
-import { Avatar, Card, GoldPill, T, tap, type IconName } from '@/components/ui';
+import { Avatar, Card, Divider, GoldPill, T, tap, VerifiedBadge, type IconName } from '@/components/ui';
 import { initialsOf } from '@/lib/auth';
-import { searchCities } from '@/lib/cities';
+import { cityCode, searchCities } from '@/lib/cities';
 import { CalendarPicker } from '@/components/calendar-picker';
 import { longDate, money, shortDate, toIsoDay, type RequestCard } from '@/lib/listings';
 import { colors, fonts, radius } from '@/theme';
@@ -27,6 +27,67 @@ export function RequestRow({ r, right, onPress }: { r: RequestCard; right?: Reac
       </View>
       {right ?? (r.budgetMax ? <GoldPill label={`≤ ${money(r.budgetMax, r.currency)}`} /> : null)}
     </Pressable>
+  );
+}
+
+/** Big card for a parcel request (Search > Expéditeurs), same look as the request page. */
+export function RequestTicket({ r, onPress }: { r: RequestCard; onPress?: () => void }) {
+  const when = r.dateEnd ? `${shortDate(r.dateStart)} – ${shortDate(r.dateEnd)}` : `dès le ${shortDate(r.dateStart)}`;
+  return (
+    <Pressable onPress={onPress} disabled={!onPress}>
+      <Card gold>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <View style={{ flexShrink: 1 }}>
+            <T v="display">{cityCode(r.from)}</T>
+            <T v="small" color={colors.textMuted} numberOfLines={1}>
+              {r.from}
+            </T>
+          </View>
+          <Ionicons name="airplane" size={26} color={colors.gold} style={{ alignSelf: 'center' }} />
+          <View style={{ alignItems: 'flex-end', flexShrink: 1 }}>
+            <T v="display">{cityCode(r.to)}</T>
+            <T v="small" color={colors.textMuted} numberOfLines={1}>
+              {r.to}
+            </T>
+          </View>
+        </View>
+        <Divider style={{ marginVertical: 12 }} />
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <Fact label="Poids" value={`${r.kg} kg`} />
+          <Fact label="Départ" value={when} />
+          <Fact label="Budget" value={r.budgetMax ? `≤ ${money(r.budgetMax, r.currency)}` : '—'} right />
+        </View>
+        {!!r.description && (
+          <T v="small" style={{ marginTop: 12 }} numberOfLines={3}>
+            {r.description}
+          </T>
+        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 }}>
+          <Avatar photo={r.requester.avatar ? { uri: r.requester.avatar } : undefined} initials={initialsOf(r.requester.name)} size={30} />
+          <T v="small" style={{ fontFamily: fonts.semibold }} numberOfLines={1}>
+            {r.requester.name}
+          </T>
+          {r.requester.verified && <VerifiedBadge size={14} />}
+          <View style={{ flex: 1 }} />
+          <T v="caption" color={colors.gold}>
+            Voir la demande ›
+          </T>
+        </View>
+      </Card>
+    </Pressable>
+  );
+}
+
+function Fact({ label, value, right }: { label: string; value: string; right?: boolean }) {
+  return (
+    <View style={{ flexShrink: 1, alignItems: right ? 'flex-end' : 'flex-start' }}>
+      <T v="caption" color={colors.textMuted}>
+        {label}
+      </T>
+      <T v="small" style={{ fontFamily: fonts.semibold }}>
+        {value}
+      </T>
+    </View>
   );
 }
 
