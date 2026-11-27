@@ -52,8 +52,8 @@ const deletion = shell('Supprimer mon compte', `<h1>Supprimer votre compte KiloF
 <p>Vous pouvez supprimer votre compte <strong>KiloFly</strong> (éditeur : Dee Digital) et les données associées à tout moment.</p>
 <h2>Depuis l’application</h2><ol><li>Ouvrez KiloFly et connectez-vous.</li><li>Allez dans <strong>Profil → Préférences</strong>.</li><li>Touchez <strong>« Supprimer mon compte »</strong> et confirmez.</li></ol>
 <h2>Par e-mail</h2><p>Écrivez à <a href="mailto:kiloflyapp@hotmail.com?subject=Suppression%20de%20compte">kiloflyapp@hotmail.com</a> depuis l’adresse de votre compte, avec l’objet « Suppression de compte ». Nous traitons la demande sous 30 jours.</p>
-<h2>Données supprimées</h2><ul><li>Profil : nom, photo, téléphone, ville, biographie</li><li>Annonces de voyage et demandes d’envoi</li><li>Messages, alertes de trajet, jetons de notification</li><li>Documents d’identité envoyés pour la vérification</li></ul>
-<h2>Données conservées</h2><ul><li>Factures, reçus et contrats des transactions terminées : conservés le temps exigé par la loi (jusqu’à 10 ans), puis supprimés.</li><li>Avis laissés à d’autres membres : rendus anonymes.</li></ul>
+<h2>Ce qui est supprimé</h2><p>Votre compte, votre profil et les données qui y sont liées (annonces, demandes d’envoi, messages, alertes, notifications) sont supprimés définitivement.</p>
+<h2>À savoir</h2><ul><li>La suppression n’est pas possible tant qu’une réservation est en cours (en attente, acceptée ou en livraison) : terminez-la ou annulez-la d’abord.</li><li>Si la loi nous oblige à conserver certaines informations de paiement, elles sont conservées le temps légal uniquement.</li></ul>
 <p>Voir aussi notre <a href="/confidentialite.html">politique de confidentialité</a>.</p>`);
 writeFileSync('public/suppression-compte.html', deletion);
 writeFileSync('public/a-propos.html', about);
