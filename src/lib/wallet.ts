@@ -9,7 +9,7 @@ export type WalletTx = {
   id: string;
   type: 'credit' | 'debit';
   amount: number;
-  status: 'pending' | 'completed' | 'failed' | 'cancelled';
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
   description: string | null;
   payout_method: string | null;
   reservation_id: string | null;
@@ -52,7 +52,11 @@ export function useWallet() {
         ? { ...row, balance: Number(row.balance), pending: Number(row.pending), withdrawing: Number(row.withdrawing), total_earned: Number(row.total_earned), min_withdrawal: Number(row.min_withdrawal) }
         : null,
     );
-    setHistory(((h.data ?? []) as WalletTx[]).map((t) => ({ ...t, amount: Number(t.amount) })));
+    const list = ((h.data ?? []) as WalletTx[]).map((t) => ({ ...t, amount: Number(t.amount) }));
+    setHistory(list);
+    // A mobile-money withdrawal still being sent: ask FeexPay once, then refresh if it is settled.
+    const sending = list.find((t) => t.status === 'processing');
+    if (sending && ['completed', 'failed'].includes(await checkPayout(sending.id))) reload();
   }, [session]);
 
   useEffect(() => {
@@ -63,13 +67,21 @@ export function useWallet() {
 }
 
 export async function requestWithdrawal(input: { amount: number; method: string; phone?: string; iban?: string; email?: string; accountName?: string }) {
-  const { error } = await supabase.rpc('request_withdrawal', {
+  const { data: id, error } = await supabase.rpc('request_withdrawal', {
     p_amount: input.amount,
     p_method: input.method,
     p_phone: input.phone || null,
     p_details: { iban: input.iban || null, email: input.email || null, account_name: input.accountName || null },
   });
-  return error ? { error: walletError(error.message) } : {};
+  if (error) return { error: walletError(error.message) };
+  // Mobile money: try to send it right away with FeexPay (otherwise it waits for an admin).
+  const { data } = await supabase.functions.invoke('payouts', { body: { withdrawal_id: id } });
+  return { status: (data?.status as string | undefined) ?? 'manual' };
+}
+
+export async function checkPayout(id: string) {
+  const { data } = await supabase.functions.invoke('payouts', { body: { withdrawal_id: id, action: 'check' } });
+  return (data?.status as string | undefined) ?? 'none';
 }
 
 export async function cancelWithdrawal(id: string) {

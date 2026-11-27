@@ -8,6 +8,7 @@ import { shortDate } from '@/lib/admin';
 import { useAuth } from '@/lib/auth';
 import { money } from '@/lib/listings';
 import { supabase } from '@/lib/supabase';
+import { checkPayout } from '@/lib/wallet';
 import { methodLabel } from '@/lib/wallet';
 import { colors } from '@/theme';
 
@@ -27,6 +28,7 @@ type W = {
 
 const filters = [
   ['pending', 'À payer'],
+  ['processing', 'Envoi FeexPay'],
   ['completed', 'Payés'],
   ['failed', 'Refusés'],
   ['', 'Tous'],
@@ -92,8 +94,8 @@ export default function AdminWithdrawals() {
               {money(w.amount, w.currency)}
             </T>
             <Badge
-              label={w.status === 'pending' ? 'À payer' : w.status === 'completed' ? 'Payé' : w.status === 'failed' ? 'Refusé' : 'Annulé'}
-              tone={w.status === 'pending' ? 'warning' : w.status === 'completed' ? 'success' : 'muted'}
+              label={w.status === 'pending' ? 'À payer' : w.status === 'processing' ? 'Envoi FeexPay' : w.status === 'completed' ? 'Payé' : w.status === 'failed' ? 'Refusé' : 'Annulé'}
+              tone={w.status === 'pending' || w.status === 'processing' ? 'warning' : w.status === 'completed' ? 'success' : 'muted'}
             />
           </View>
           <T v="small">
@@ -112,6 +114,11 @@ export default function AdminWithdrawals() {
             Demandé le {shortDate(w.created_at)}
             {w.details?.admin_note ? ` · ${w.details.admin_note}` : ''}
           </T>
+          {w.status === 'processing' && (
+            <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+              <SmallAction label="Vérifier chez FeexPay" icon="refresh" onPress={async () => (await checkPayout(w.id), load())} />
+            </View>
+          )}
           {w.status === 'pending' && (
             <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
               <SmallAction label="Refuser" icon="close" tone="danger" onPress={() => process(w, false)} />

@@ -16,6 +16,7 @@ import { colors, fonts, radius } from '@/theme';
 const STATUS: Record<WalletTx['status'], { label: string; color: string }> = {
   completed: { label: 'Terminé', color: colors.textFaint },
   pending: { label: 'En cours', color: colors.warning },
+  processing: { label: 'Envoi en cours', color: colors.warning },
   failed: { label: 'Refusé', color: colors.danger },
   cancelled: { label: 'Annulé', color: colors.textFaint },
 };
@@ -176,10 +177,18 @@ export default function WalletScreen() {
           currency={cur}
           defaultPhone={profile?.phone ?? ''}
           country={profile?.country ?? ''}
-          onDone={() => {
+          onDone={(status) => {
             setOpen(false);
             reload();
-            notify('Demande envoyée. Vous serez notifié dès que le virement est fait (en général sous 48 h).');
+            notify(
+              status === 'completed'
+                ? 'C’est envoyé ! L’argent est arrivé sur votre compte mobile money.'
+                : status === 'processing'
+                  ? 'Envoi en cours sur votre compte mobile money. Vous recevrez une notification dès que c’est arrivé.'
+                  : status === 'failed'
+                    ? 'L’opérateur a refusé l’envoi. Le montant est de retour sur votre portefeuille : vérifiez le numéro et réessayez.'
+                    : 'Demande envoyée. Vous serez notifié dès que le virement est fait (en général sous 48 h).',
+            );
           }}
         />
       )}
@@ -204,7 +213,7 @@ function WithdrawSheet({
   currency: string;
   defaultPhone: string;
   country: string;
-  onDone: () => void;
+  onDone: (status?: string) => void;
 }) {
   const insets = useSafeAreaInsets();
   const isCanada = findCountry(country)?.code === 'CA';
@@ -227,7 +236,7 @@ function WithdrawSheet({
     const r = await requestWithdrawal({ amount: n, method, phone, iban, email, accountName: name });
     setBusy(false);
     if (r.error) return setError(r.error);
-    onDone();
+    onDone(r.status);
   };
 
   return (
