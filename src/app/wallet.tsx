@@ -27,6 +27,7 @@ export default function WalletScreen() {
   const { session, profile, loading } = useAuth();
   const { wallet, history, reload } = useWallet();
   const [open, setOpen] = useState(false);
+  const [tooLow, setTooLow] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -93,12 +94,19 @@ export default function WalletScreen() {
             icon="arrow-up"
             style={{ flex: 1 }}
             onPress={() => {
-              if (!wallet || wallet.balance < wallet.min_withdrawal)
-                return notify(`Le retrait est possible à partir de ${money(wallet?.min_withdrawal ?? 10, cur)}.`);
+              if (!wallet || wallet.balance < wallet.min_withdrawal) return setTooLow(true);
               setOpen(true);
             }}
           />
         </View>
+        {tooLow && (
+          <View style={styles.tooLow}>
+            <Ionicons name="information-circle" size={18} color={colors.gold} />
+            <T v="small" style={{ flex: 1 }}>
+              Vous pourrez retirer vos fonds dès que votre solde atteint {money(wallet?.min_withdrawal ?? 10, cur)}. Solde actuel : {money(wallet?.balance ?? 0, cur)}.
+            </T>
+          </View>
+        )}
         <T v="caption" color={colors.textFaint} style={{ marginTop: 8 }}>
           L’argent d’un transport arrive ici quand la livraison est confirmée avec le code du destinataire. Gains totaux : {money(wallet?.total_earned ?? 0, cur)}.
         </T>
@@ -306,6 +314,7 @@ function WithdrawSheet({
 }
 
 const styles = StyleSheet.create({
+  tooLow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.borderGold, backgroundColor: colors.goldSoft },
   card: {
     height: 210,
     borderRadius: radius.xl,
